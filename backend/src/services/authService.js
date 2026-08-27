@@ -3,7 +3,6 @@ const pool = require('../config/database');
 const { generateToken } = require('../utils/jwt');
 
 const register = async (name, email, password, phone) => {
-    // Cek apakah email sudah digunakan
     const [existingUsers] = await pool.execute(
         'SELECT id FROM users WHERE email = ?',
         [email]
@@ -13,10 +12,8 @@ const register = async (name, email, password, phone) => {
         throw new Error('Email sudah digunakan');
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Simpan user
     const [result] = await pool.execute(
         `INSERT INTO users 
         (name, email, password, phone, role)
@@ -24,7 +21,6 @@ const register = async (name, email, password, phone) => {
         [name, email, hashedPassword, phone, 'customer']
     );
 
-    // Ambil user yang baru dibuat
     const [users] = await pool.execute(
         `SELECT id, name, email, phone, role, created_at
          FROM users
@@ -34,7 +30,6 @@ const register = async (name, email, password, phone) => {
 
     const user = users[0];
 
-    // Buat JWT
     const token = generateToken(user);
 
     return {
@@ -44,7 +39,6 @@ const register = async (name, email, password, phone) => {
 };
 
 const login = async (email, password) => {
-    // Cari user berdasarkan email
     const [users] = await pool.execute(
         'SELECT * FROM users WHERE email = ?',
         [email]
@@ -56,7 +50,6 @@ const login = async (email, password) => {
 
     const user = users[0];
 
-    // Bandingkan password
     const passwordMatch = await bcrypt.compare(
         password,
         user.password
@@ -66,10 +59,45 @@ const login = async (email, password) => {
         throw new Error('Email atau password salah');
     }
 
-    // Jangan kirim password ke frontend
     delete user.password;
 
-    // Buat JWT
+    const token = generateToken(user);
+
+    return {
+        user,
+        token
+    };
+};
+
+
+const registerAdmin = async (name, email, password, phone) => {
+    const [existingUsers] = await pool.execute(
+        'SELECT id FROM users WHERE email = ?',
+        [email]
+    );
+
+    if (existingUsers.length > 0) {
+        throw new Error('Email sudah digunakan');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const [result] = await pool.execute(
+        `INSERT INTO users
+        (name, email, password, phone, role)
+        VALUES (?, ?, ?, ?, ?)`,
+        [name, email, hashedPassword, phone, 'admin']
+    );
+
+    const [users] = await pool.execute(
+        `SELECT id, name, email, phone, role, created_at
+         FROM users
+         WHERE id = ?`,
+        [result.insertId]
+    );
+
+    const user = users[0];
+
     const token = generateToken(user);
 
     return {
@@ -80,5 +108,6 @@ const login = async (email, password) => {
 
 module.exports = {
     register,
+    registerAdmin,
     login
 };
