@@ -18,7 +18,7 @@ const register = async (name, email, password, phone) => {
         `INSERT INTO users 
         (name, email, password, phone, role)
         VALUES (?, ?, ?, ?, ?)`,
-        [name, email, hashedPassword, phone, 'customer']
+        [name, email, hashedPassword, phone, 'user']
     );
 
     const [users] = await pool.execute(
