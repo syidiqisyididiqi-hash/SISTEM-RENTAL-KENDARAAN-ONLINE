@@ -1,5 +1,6 @@
 const express = require('express');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const vehicleRoutes = require('./routes/vehicleRoutes');
 
@@ -17,6 +18,8 @@ app.get('/', (req, res) => {
 
 
 app.use('/api/auth', authRoutes);
+
+app.use('/api/users', userRoutes);
 
 app.use('/api/categories', categoryRoutes);
 
