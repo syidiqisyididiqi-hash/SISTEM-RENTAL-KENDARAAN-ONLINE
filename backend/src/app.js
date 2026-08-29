@@ -3,6 +3,8 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const vehicleRoutes = require('./routes/vehicleRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
+
 
 const app = express();
 
@@ -24,6 +26,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 
 app.use('/api/vehicles', vehicleRoutes);
+
+app.use('/api/bookings', bookingRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
