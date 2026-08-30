@@ -4,7 +4,7 @@ const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const vehicleRoutes = require('./routes/vehicleRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
-
+const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
 
@@ -28,6 +28,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 
 app.use('/api/bookings', bookingRoutes);
+
+app.use('/api/payments', paymentRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
