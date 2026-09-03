@@ -1,4 +1,6 @@
 const express = require('express');
+const cors = require('cors');
+
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -8,8 +10,15 @@ const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
 
+
+app.use(cors({
+    origin: 'http://localhost:3000',
+    credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 
 app.get('/', (req, res) => {
     res.json({
@@ -17,7 +26,6 @@ app.get('/', (req, res) => {
         message: 'API Rental Kendaraan berjalan'
     });
 });
-
 
 app.use('/api/auth', authRoutes);
 
@@ -31,6 +39,7 @@ app.use('/api/bookings', bookingRoutes);
 
 app.use('/api/payments', paymentRoutes);
 
+
 app.use((req, res) => {
     res.status(404).json({
         success: false,
@@ -38,13 +47,15 @@ app.use((req, res) => {
     });
 });
 
-app.use((err, req, res, next) => {
-    console.error(err);
 
-    res.status(500).json({
+app.use((err, req, res, next) => {
+    console.error('ERROR:', err);
+
+    res.status(err.status || 500).json({
         success: false,
-        message: 'Terjadi kesalahan pada server'
+        message: err.message || 'Terjadi kesalahan pada server'
     });
 });
+
 
 module.exports = app;
