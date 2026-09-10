@@ -72,7 +72,10 @@ const createVehicle = async (req, res) => {
             });
         }
 
-        const vehicle = await vehicleService.createVehicle(req.body);
+        const vehicle = await vehicleService.createVehicle({
+            ...req.body,
+            image: req.file ? `/uploads/vehicles/${req.file.filename}` : null
+        });
 
         res.status(201).json({
             success: true,
@@ -144,10 +147,21 @@ const updateVehicle = async (req, res) => {
             });
         }
 
-        const vehicle = await vehicleService.updateVehicle(
-            id,
-            req.body
-        );
+        const currentVehicle = await vehicleService.getVehicleById(id);
+
+        if (!currentVehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Kendaraan tidak ditemukan'
+            });
+        }
+
+        const vehicle = await vehicleService.updateVehicle(id, {
+            ...req.body,
+            image: req.file
+                ? `/uploads/vehicles/${req.file.filename}`
+                : currentVehicle.image
+        });
 
         if (!vehicle) {
             return res.status(404).json({

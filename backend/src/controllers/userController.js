@@ -1,5 +1,51 @@
 const userService = require('../services/userService');
 
+const createUser = async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nama, email, dan password wajib diisi'
+            });
+        }
+
+        if (role && !['user', 'admin'].includes(role)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Role harus user atau admin'
+            });
+        }
+
+        const user = await userService.createUser({
+            ...req.body,
+            role: role || 'user'
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: 'User berhasil ditambahkan',
+            data: user
+        });
+    } catch (error) {
+        console.error('Create user error:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                success: false,
+                message: 'Email sudah digunakan'
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Gagal menambahkan user',
+            error: error.message
+        });
+    }
+};
+
 const getAllUsers = async (req, res) => {
     try {
         const users = await userService.getAllUsers();
@@ -99,6 +145,7 @@ const deleteUser = async (req, res) => {
 };
 
 module.exports = {
+    createUser,
     getAllUsers,
     getUserById,
     updateUser,
