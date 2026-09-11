@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import bookingService from "@/services/bookingService";
 
 export default function BookingsPage() {
@@ -97,15 +98,24 @@ export default function BookingsPage() {
     };
 
     return (
-        <div>
-            <div>
-                <h1 className="text-2xl font-bold text-gray-800">
+        <div >
+            <div className="flex items-center justify-between">
+                <div>
+                <h1>
                     Bookings
                 </h1>
 
                 <p className="mt-1 text-sm text-gray-500">
                     Kelola data penyewaan kendaraan.
                 </p>
+                </div>
+
+                 <Link
+                    href="/admin/bookings/create"
+                    className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+                >
+                    + Tambah Booking
+                </Link>
             </div>
 
             <div className="mt-6">
@@ -246,15 +256,37 @@ export default function BookingsPage() {
                                                         )}
                                                     </span>
                                                 </td>
-
-                                                <td className="px-6 py-4">
-                                                    <button
-                                                        type="button"
-                                                        className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
-                                                    >
-                                                        Detail
-                                                    </button>
-                                                </td>
+                                                
+                                                  <td className="px-6 py-4">
+                                                    <div className="flex gap-2">
+                                                        <Link
+                                                            href={`/admin/bookings/edit/${booking.id}`}
+                                                            className="rounded-md bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-600 hover:bg-yellow-100"
+                                                        >
+                                                            Edit
+                                                        </Link>
+                                                        
+                                                          <button
+                                                            type="button"
+                                                            className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
+                                                        >
+                                                            Detail
+                                                        </button>
+                                                        
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleDelete(
+                                                                    booking.id
+                                                                )
+                                                            }
+                                                            className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+                                                        >
+                                                            Hapus
+                                                        </button>
+                                                    </div>
+                                                </td>                                             
+                                                
                                             </tr>
                                         ))
                                     ) : (
