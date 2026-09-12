@@ -144,10 +144,91 @@ const deleteUser = async (req, res) => {
     }
 };
 
+const getProfile = async (req, res) => {
+    try {
+        const user = await userService.getUserById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User tidak ditemukan'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile berhasil diambil',
+            data: user
+        });
+    } catch (error) {
+        console.error('Get profile error:', error);
+
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil profile',
+            error: error.message
+        });
+    }
+};
+    
+const updateProfile = async (req, res) => {
+    try {
+        const { name, email, phone, address } = req.body;
+
+        if (!name || !email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nama dan email wajib diisi'
+            });
+        }
+
+        const user = await userService.getUserById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User tidak ditemukan'
+            });
+        }
+
+        await userService.updateProfile(req.user.id, {
+            name,
+            email,
+            phone,
+            address
+        });
+
+        const updatedUser = await userService.getUserById(req.user.id);
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile berhasil diperbarui',
+            data: updatedUser
+        });
+    } catch (error) {
+        console.error('Update profile error:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                success: false,
+                message: 'Email sudah digunakan'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Gagal memperbarui profile',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createUser,
     getAllUsers,
     getUserById,
     updateUser,
+    getProfile,
+    updateProfile,
     deleteUser
 };
