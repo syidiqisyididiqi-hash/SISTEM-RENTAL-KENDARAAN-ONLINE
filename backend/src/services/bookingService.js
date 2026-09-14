@@ -1,5 +1,14 @@
 const pool = require('../config/database');
 
+const allowedBookingStatuses = [
+    'pending',
+    'confirmed',
+    'ongoing',
+    'completed',
+    'cancelled',
+    'rejected'
+];
+
 const getAllBookings = async () => {
     const [rows] = await pool.query(`
         SELECT
@@ -92,8 +101,13 @@ const createBooking = async (data) => {
         vehicle_id,
         start_date,
         end_date,
-        notes
+        notes,
+        status = 'pending'
     } = data;
+
+    if (!allowedBookingStatuses.includes(status)) {
+        throw new Error('Status booking tidak valid');
+    }
 
     const [vehicles] = await pool.query(
         `SELECT id, price_per_day, status
@@ -135,9 +149,10 @@ const createBooking = async (data) => {
             total_days,
             price_per_day,
             total_price,
+            status,
             notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
         user_id,
         vehicle_id,
@@ -146,6 +161,7 @@ const createBooking = async (data) => {
         total_days,
         price_per_day,
         total_price,
+        status,
         notes || null
     ]);
 
@@ -156,13 +172,20 @@ const updateBooking = async (id, data) => {
     const {
         start_date,
         end_date,
-        notes
+        notes,
+        status
     } = data;
 
     const booking = await getBookingById(id);
 
     if (!booking) {
         throw new Error('Booking tidak ditemukan');
+    }
+
+    const nextStatus = status || booking.status;
+
+    if (!allowedBookingStatuses.includes(nextStatus)) {
+        throw new Error('Status booking tidak valid');
     }
 
     const start = new Date(start_date);
@@ -185,6 +208,7 @@ const updateBooking = async (id, data) => {
             end_date = ?,
             total_days = ?,
             total_price = ?,
+            status = ?,
             notes = ?
         WHERE id = ?
     `, [
@@ -192,6 +216,7 @@ const updateBooking = async (id, data) => {
         end_date,
         total_days,
         total_price,
+        nextStatus,
         notes || null,
         id
     ]);
@@ -206,16 +231,7 @@ const updateBookingStatus = async (id, status) => {
         throw new Error('Booking tidak ditemukan');
     }
 
-    const allowedStatus = [
-        'pending',
-        'confirmed',
-        'ongoing',
-        'completed',
-        'cancelled',
-        'rejected'
-    ];
-
-    if (!allowedStatus.includes(status)) {
+    if (!allowedBookingStatuses.includes(status)) {
         throw new Error('Status booking tidak valid');
     }
 

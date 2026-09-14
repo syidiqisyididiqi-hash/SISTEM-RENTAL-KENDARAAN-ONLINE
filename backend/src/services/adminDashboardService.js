@@ -64,15 +64,54 @@ const getBookingSummary = async () => {
     return summary;
 };
 
+const getPaymentSummary = async () => {
+    const [rows] = await pool.query(
+        "SELECT status, COUNT(*) AS total FROM payments GROUP BY status"
+    );
+
+    const summary = {
+        pending: 0,
+        paid: 0,
+        rejected: 0,
+    };
+
+    rows.forEach((row) => {
+        summary[row.status] = row.total;
+    });
+
+    return summary;
+};
+
+const getRecentPayments = async () => {
+    const [rows] = await pool.query(`
+        SELECT
+            p.id,
+            p.booking_id,
+            p.payment_method,
+            p.amount,
+            p.status,
+            p.created_at
+        FROM payments p
+        ORDER BY p.created_at DESC
+        LIMIT 5
+    `);
+
+    return rows;
+};
+
 const getAdminDashboard = async () => ({
     statistics: await getDashboardStatistics(),
     recentBookings: await getRecentBookings(),
     bookingSummary: await getBookingSummary(),
+    paymentSummary: await getPaymentSummary(),
+    recentPayments: await getRecentPayments(),
 });
 
 module.exports = {
     getDashboardStatistics,
     getRecentBookings,
     getBookingSummary,
+    getPaymentSummary,
+    getRecentPayments,
     getAdminDashboard,
 };
