@@ -1,12 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminNavbar() {
+    const router = useRouter();
     const [showMenu, setShowMenu] = useState(false);
 
+    const handleProfile = () => {
+        setShowMenu(false);
+        router.push("/admin/profile");
+    };
+
+    const handleLogout = () => {
+        setShowMenu(false);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        router.push("/login");
+    };
+
     return (
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
             <div>
                 <h2 className="text-lg font-semibold text-gray-800">
                     Admin Panel
@@ -17,9 +31,9 @@ export default function AdminNavbar() {
                 <button
                     type="button"
                     onClick={() => setShowMenu(!showMenu)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition hover:bg-gray-100"
                 >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 font-semibold text-white">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                         A
                     </div>
 
@@ -33,23 +47,25 @@ export default function AdminNavbar() {
                         </p>
                     </div>
 
-                    <span className="text-gray-400">
+                    <span className="text-xs text-gray-400">
                         ▼
                     </span>
                 </button>
 
                 {showMenu && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-lg border bg-white py-2 shadow-lg">
+                    <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                         <button
                             type="button"
-                            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={handleProfile}
+                            className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-100"
                         >
                             Profile
                         </button>
 
                         <button
                             type="button"
-                            className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
+                            onClick={handleLogout}
+                            className="block w-full px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-gray-100"
                         >
                             Logout
                         </button>

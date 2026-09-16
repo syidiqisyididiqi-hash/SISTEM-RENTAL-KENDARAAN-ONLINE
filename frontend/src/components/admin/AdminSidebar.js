@@ -34,18 +34,18 @@ const menus = [
         href: "/admin/payments",
         icon: "▤",
     },
-    {
-        name: "Profile",
-        href: "/admin/profile",
-        icon: "●",
-    },
+    // {
+    //     name: "Profile",
+    //     href: "/admin/profile",
+    //     icon: "●",
+    // },
 ];
 
 export default function AdminSidebar() {
     const pathname = usePathname();
 
     return (
-        <aside className="fixed left-0 top-0 h-screen w-64 bg-slate-900 text-white">
+        <aside className="sticky top-0 h-screen w-64 shrink-0 bg-slate-900 text-white">
             <div className="border-b border-slate-700 px-6 py-5">
                 <h1 className="text-xl font-bold">
                     Rental Kendaraan
@@ -65,9 +65,7 @@ export default function AdminSidebar() {
                     {menus.map((menu) => {
                         const isActive =
                             pathname === menu.href ||
-                            pathname.startsWith(
-                                `${menu.href}/`
-                            );
+                            pathname.startsWith(`${menu.href}/`);
 
                         return (
                             <Link
