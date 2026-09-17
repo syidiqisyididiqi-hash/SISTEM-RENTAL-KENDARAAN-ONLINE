@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import authService from "@/services/authService";
 
 export default function LoginForm() {
+    const router = useRouter();
+
     const [formData, setFormData] = useState({
         email: "",
         password: "",
     });
 
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -20,7 +25,7 @@ export default function LoginForm() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         setError("");
@@ -30,15 +35,46 @@ export default function LoginForm() {
             return;
         }
 
-        console.log("Login data:", formData);
+        try {
+            setLoading(true);
 
-        // Sementara frontend saja
-        alert("Login berhasil (dummy frontend).");
+            const response = await authService.login(
+                formData.email,
+                formData.password
+            );
+
+            const token = response.data.token;
+            const user = response.data.user;
+
+            if (!token || !user) {
+                setError("Data login tidak lengkap.");
+                return;
+            }
+
+            localStorage.setItem("token", token);
+            localStorage.setItem("user", JSON.stringify(user));
+
+            const role = user.role?.toLowerCase();
+
+            if (role === "admin") {
+                router.push("/admin/dashboard");
+            } else if (role === "user") {
+                router.push("/user/dashboard");
+            } else {
+                setError("Role user tidak valid.");
+            }
+        } catch (error) {
+            setError(
+                error.response?.data?.message ||
+                    "Email atau password salah."
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-slate-200">
-            {/* Header */}
             <div className="mb-8 text-center">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600 text-xl font-bold text-white">
                     RK
@@ -53,19 +89,13 @@ export default function LoginForm() {
                 </p>
             </div>
 
-            {/* Error */}
             {error && (
                 <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                     {error}
                 </div>
             )}
 
-            {/* Form */}
-            <form
-                onSubmit={handleSubmit}
-                className="space-y-5"
-            >
-                {/* Email */}
+            <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                     <label
                         htmlFor="email"
@@ -85,7 +115,6 @@ export default function LoginForm() {
                     />
                 </div>
 
-                {/* Password */}
                 <div>
                     <label
                         htmlFor="password"
@@ -105,7 +134,6 @@ export default function LoginForm() {
                     />
                 </div>
 
-                {/* Remember */}
                 <div className="flex items-center justify-between">
                     <label className="flex items-center gap-2 text-sm text-slate-600">
                         <input
@@ -124,16 +152,15 @@ export default function LoginForm() {
                     </button>
                 </div>
 
-                {/* Button */}
                 <button
                     type="submit"
-                    className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    disabled={loading}
+                    className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Login
+                    {loading ? "Memproses..." : "Login"}
                 </button>
             </form>
 
-            {/* Register */}
             <div className="mt-6 text-center">
                 <p className="text-sm text-slate-500">
                     Belum punya akun?{" "}
