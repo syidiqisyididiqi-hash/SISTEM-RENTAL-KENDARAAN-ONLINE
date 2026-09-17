@@ -10,6 +10,10 @@ const userService = {
     update: (id, data) => api.put(`/users/${id}`, data),
 
     remove: (id) => api.delete(`/users/${id}`),
+
+    getProfile: () => api.get("/users/profile"),
+
+    updateProfile: (data) => api.put("/users/profile", data),
 };
 
 export default userService;
