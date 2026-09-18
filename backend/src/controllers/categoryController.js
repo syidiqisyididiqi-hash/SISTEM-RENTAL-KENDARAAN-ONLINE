@@ -158,6 +158,14 @@ const deleteCategory = async (req, res) => {
     } catch (error) {
         console.error(error);
 
+        if (error.code === "ER_ROW_IS_REFERENCED_2") {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "Kategori tidak dapat dihapus karena masih digunakan oleh kendaraan."
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: "Gagal menghapus kategori"
