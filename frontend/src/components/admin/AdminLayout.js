@@ -9,6 +9,7 @@ import AdminNavbar from "./AdminNavbar";
 export default function AdminLayout({ children }) {
     const router = useRouter();
     const [authorized, setAuthorized] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -47,16 +48,19 @@ export default function AdminLayout({ children }) {
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-100">
-            <aside className="w-64 shrink-0">
-                <AdminSidebar />
-            </aside>
+            <AdminSidebar
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+            />
 
             <div className="flex min-w-0 flex-1 flex-col">
                 <div className="shrink-0">
-                    <AdminNavbar />
+                    <AdminNavbar
+                        onMenuClick={() => setSidebarOpen(true)}
+                    />
                 </div>
 
-                <main className="min-h-0 flex-1 overflow-y-auto p-6">
+                <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
                     {children}
                 </main>
             </div>
