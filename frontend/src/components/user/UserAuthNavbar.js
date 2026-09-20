@@ -82,13 +82,16 @@ export default function UserAuthNavbar() {
     }
   }
 
+  const isUserSession =
+    user?.role?.toLowerCase() === "user";
+
   useEffect(() => {
     if (!token && requiresAuth) {
       router.replace("/login");
     }
   }, [token, requiresAuth, router]);
 
-  if (!token) {
+  if (!token || !isUserSession) {
     return requiresAuth ? null : <UserNavbar />;
   }
 
