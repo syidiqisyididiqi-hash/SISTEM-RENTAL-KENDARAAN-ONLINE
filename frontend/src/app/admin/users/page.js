@@ -1,13 +1,27 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import userService from "@/services/userService";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
+import Button from "@/components/ui/Button";
+import LinkButton from "@/components/ui/LinkButton";
+import DataTable from "@/components/ui/DataTable";
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const [toast, setToast] = useState({
+        open: false,
+        type: "success",
+        message: "",
+    });
 
     useEffect(() => {
         const loadUsers = async () => {
@@ -27,26 +41,40 @@ export default function UsersPage() {
         loadUsers();
     }, []);
 
-    const handleDelete = async (id) => {
-        const confirmDelete = window.confirm(
-            "Apakah kamu yakin ingin menghapus user ini?"
-        );
-
-        if (!confirmDelete) {
+    const handleDelete = async () => {
+        if (!selectedUserId) {
             return;
         }
 
         try {
-            await userService.remove(id);
+            setDeleteLoading(true);
+
+            await userService.remove(selectedUserId);
 
             setUsers((prevUsers) =>
-                prevUsers.filter((user) => user.id !== id)
+                prevUsers.filter(
+                    (user) => user.id !== selectedUserId
+                )
             );
 
-            alert("User berhasil dihapus.");
+            setShowDeleteDialog(false);
+            setSelectedUserId(null);
+
+            setToast({
+                open: true,
+                type: "success",
+                message: "User berhasil dihapus.",
+            });
         } catch (error) {
             console.error("Error menghapus user:", error);
-            alert("Gagal menghapus user.");
+
+            setToast({
+                open: true,
+                type: "error",
+                message: "Gagal menghapus user.",
+            });
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -78,6 +106,96 @@ export default function UsersPage() {
         return "User";
     };
 
+    const columns = [
+    {
+        key: "no",
+        label: "No",
+        render: (_, index) => index + 1,
+    },
+    {
+        key: "name",
+        label: "Nama",
+        render: (user) => (
+            <p className="font-medium text-gray-800">
+                {user.name}
+            </p>
+        ),
+    },
+    {
+        key: "email",
+        label: "Email",
+        render: (user) => (
+            <span className="text-gray-600">
+                {user.email}
+            </span>
+        ),
+    },
+    {
+        key: "phone",
+        label: "Telepon",
+        render: (user) => (
+            <span className="text-gray-600">
+                {user.phone || "-"}
+            </span>
+        ),
+    },
+    {
+        key: "address",
+        label: "Alamat",
+        render: (user) => (
+            <p className="max-w-[250px] truncate text-gray-600">
+                {user.address || "-"}
+            </p>
+        ),
+    },
+    {
+        key: "role",
+        label: "Role",
+        render: (user) => (
+            <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${getRoleStyle(
+                    user.role
+                )}`}
+            >
+                {getRoleLabel(user.role)}
+            </span>
+        ),
+    },
+    {
+        key: "created_at",
+        label: "Terdaftar",
+        render: (user) => (
+            <span className="text-gray-600">
+                {formatDate(user.created_at)}
+            </span>
+        ),
+    },
+    {
+        key: "actions",
+        label: "Aksi",
+        render: (user) => (
+            <div className="flex gap-2">
+                <LinkButton
+                    href={`/admin/users/edit/${user.id}`}
+                >
+                    Edit
+                </LinkButton>
+
+                <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => {
+                        setSelectedUserId(user.id);
+                        setShowDeleteDialog(true);
+                    }}
+                >
+                    Hapus
+                </Button>
+            </div>
+        ),
+    },
+];
+
     return (
         <div>
             <div className="flex items-center justify-between">
@@ -91,152 +209,59 @@ export default function UsersPage() {
                     </p>
                 </div>
 
-                <Link
+                <LinkButton
                     href="/admin/users/create"
-                    className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+                    variant="add"
                 >
                     + Tambah User
-                </Link>
+                </LinkButton>
             </div>
-
-            {/* Content */}
+    
             <div className="mt-6">
-                {loading && (
-                    <p className="text-sm text-gray-500">
-                        Memuat data user...
-                    </p>
-                )}
-
-                {error && (
+                {error ? (
                     <p className="text-sm text-red-500">
                         {error}
                     </p>
-                )}
-
-                {!loading && !error && (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1000px] text-left text-sm">
-                                <thead className="border-b bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            ID
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Nama
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Email
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Telepon
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Alamat
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Role
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Terdaftar
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Aksi
-                                        </th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {users.length > 0 ? (
-                                        users.map((user) => (
-                                            <tr
-                                                key={user.id}
-                                                className="border-b last:border-0"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    {user.id}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <p className="font-medium text-gray-800">
-                                                        {user.name}
-                                                    </p>
-                                                </td>
-
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {user.email}
-                                                </td>
-
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {user.phone || "-"}
-                                                </td>
-
-                                                <td className="max-w-[250px] px-6 py-4 text-gray-600">
-                                                    <p className="truncate">
-                                                        {user.address || "-"}
-                                                    </p>
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <span
-                                                        className={`rounded-full px-3 py-1 text-xs font-medium ${getRoleStyle(
-                                                            user.role
-                                                        )}`}
-                                                    >
-                                                        {getRoleLabel(
-                                                            user.role
-                                                        )}
-                                                    </span>
-                                                </td>
-
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {formatDate(
-                                                        user.created_at
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <div className="flex gap-2">
-                                                   <Link
-                                                        href={`/admin/users/edit/${user.id}`}
-                                                        className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
->
-                                                        Edit
-                                                    </Link>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDelete(user.id)}
-                                                            className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
-                                                        >
-                                                            Hapus
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td
-                                                colSpan="8"
-                                                className="px-6 py-8 text-center text-gray-500"
-                                            >
-                                                Belum ada user.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                ) : (
+                    <DataTable
+                        columns={columns}
+                        data={users}
+                        loading={loading}
+                    />
                 )}
             </div>
+
+            <ConfirmDialog
+                open={showDeleteDialog}
+                type="danger"
+                title="Hapus User?"
+                description="Apakah kamu yakin ingin menghapus user ini? Data yang sudah dihapus tidak dapat dikembalikan."
+                confirmText="Ya, Hapus"
+                cancelText="Batal"
+                onConfirm={handleDelete}
+                onCancel={() => {
+                    if (!deleteLoading) {
+                        setShowDeleteDialog(false);
+                        setSelectedUserId(null);
+                    }
+                }}
+                loading={deleteLoading}
+            />
+
+            <Toast
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() =>
+                    setToast({
+                        open: false,
+                        type: "success",
+                        message: "",
+                    })
+                }
+            />
         </div>
+        
     );
+    
 }
