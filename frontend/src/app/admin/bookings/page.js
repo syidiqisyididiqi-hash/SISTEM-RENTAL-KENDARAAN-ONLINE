@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import bookingService from "@/services/bookingService";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
+import Button from "@/components/ui/Button";
+import LinkButton from "@/components/ui/LinkButton";
+import DataTable from "@/components/ui/DataTable";
 
 export default function BookingsPage() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [selectedBookingId, setSelectedBookingId] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const [toast, setToast] = useState({
+        open: false,
+        type: "success",
+        message: "",
+    });
 
     useEffect(() => {
         const loadBookings = async () => {
@@ -26,6 +40,43 @@ export default function BookingsPage() {
 
         loadBookings();
     }, []);
+
+    const handleDelete = async () => {
+        if (!selectedBookingId) {
+            return;
+        }
+
+        try {
+            setDeleteLoading(true);
+
+            await bookingService.remove(selectedBookingId);
+
+            setBookings((prevBookings) =>
+                prevBookings.filter(
+                    (booking) => booking.id !== selectedBookingId
+                )
+            );
+
+            setShowDeleteDialog(false);
+            setSelectedBookingId(null);
+
+            setToast({
+                open: true,
+                type: "success",
+                message: "Booking berhasil dihapus.",
+            });
+        } catch (error) {
+            console.error("Error menghapus booking:", error);
+
+            setToast({
+                open: true,
+                type: "error",
+                message: "Gagal menghapus booking.",
+            });
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
 
     const formatDate = (date) => {
         if (!date) {
@@ -75,236 +126,209 @@ export default function BookingsPage() {
     const getStatusLabel = (status) => {
         switch (status) {
             case "pending":
-                return "Pending";
+                return "Menunggu";
 
             case "confirmed":
-                return "Confirmed";
+                return "Dikonfirmasi";
 
             case "ongoing":
-                return "Ongoing";
+                return "Sedang Berlansung";
 
             case "completed":
-                return "Completed";
+                return "Selesai";
 
             case "cancelled":
-                return "Cancelled";
+                return "Dibatalkan";
 
             case "rejected":
-                return "Rejected";
+                return "Ditolak";
 
             default:
                 return status || "-";
         }
     };
 
+    const columns = [
+        {
+            key: "no",
+            label: "No",
+            render: (_, index) => index + 1,
+        },
+        {
+            key: "user",
+            label: "User",
+            render: (booking) => (
+                <div>
+                    <p className="font-medium text-gray-800">
+                        {booking.user_name}
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                        User ID: {booking.user_id}
+                    </p>
+                </div>
+            ),
+        },
+        {
+            key: "vehicle",
+            label: "Kendaraan",
+            render: (booking) => (
+                <div>
+                    <p className="font-medium text-gray-800">
+                        {booking.vehicle_name}
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                        {booking.brand} {booking.model || ""}
+                    </p>
+                </div>
+            ),
+        },
+        {
+            key: "period",
+            label: "Periode",
+            render: (booking) => (
+                <div className="whitespace-nowrap">
+                    <p className="text-gray-800">
+                        {formatDate(booking.start_date)}
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                        sampai {formatDate(booking.end_date)}
+                    </p>
+                </div>
+            ),
+        },
+        {
+            key: "total_days",
+            label: "Hari",
+            render: (booking) => (
+                <span className="whitespace-nowrap">
+                    {booking.total_days} hari
+                </span>
+            ),
+        },
+        {
+            key: "price_per_day",
+            label: "Harga / Hari",
+            render: (booking) => (
+                <span className="whitespace-nowrap">
+                    {formatPrice(booking.price_per_day)}
+                </span>
+            ),
+        },
+        {
+            key: "total_price",
+            label: "Total",
+            render: (booking) => (
+                <span className="whitespace-nowrap font-medium text-gray-800">
+                    {formatPrice(booking.total_price)}
+                </span>
+            ),
+        },
+        {
+            key: "status",
+            label: "Status",
+            render: (booking) => (
+                <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(
+                        booking.status
+                    )}`}
+                >
+                    {getStatusLabel(booking.status)}
+                </span>
+            ),
+        },
+        {
+            key: "actions",
+            label: "Aksi",
+            render: (booking) => (
+                <div className="flex gap-2">
+                    <LinkButton
+                        href={`/admin/bookings/edit/${booking.id}`}
+                    >
+                        Edit
+                    </LinkButton>
+
+                    <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => {
+                            setSelectedBookingId(booking.id);
+                            setShowDeleteDialog(true);
+                        }}
+                    >
+                        Hapus
+                    </Button>
+                </div>
+            ),
+        },
+    ];
+
     return (
-        <div >
+        <div>
             <div className="flex items-center justify-between">
                 <div>
-                <h1>
-                    Bookings
-                </h1>
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        Bookings
+                    </h1>
 
-                <p className="mt-1 text-sm text-gray-500">
-                    Kelola data penyewaan kendaraan.
-                </p>
+                    <p className="mt-1 text-sm text-gray-500">
+                        Kelola data penyewaan kendaraan.
+                    </p>
                 </div>
 
-                 <Link
+                <LinkButton
                     href="/admin/bookings/create"
-                    className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+                    variant="add"
                 >
                     + Tambah Booking
-                </Link>
+                </LinkButton>
             </div>
 
             <div className="mt-6">
-                {loading && (
-                    <p className="text-sm text-gray-500">
-                        Memuat data booking...
-                    </p>
-                )}
-
-                {error && (
+                {error ? (
                     <p className="text-sm text-red-500">
                         {error}
                     </p>
-                )}
-
-                {!loading && !error && (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1100px] text-left text-sm">
-                                <thead className="border-b bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            ID
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            User
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Kendaraan
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Periode
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Hari
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Harga / Hari
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Total
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Status
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Aksi
-                                        </th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {bookings.length > 0 ? (
-                                        bookings.map((booking) => (
-                                            <tr
-                                                key={booking.id}
-                                                className="border-b last:border-0"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    #{booking.id}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <div>
-                                                        <p className="font-medium text-gray-800">
-                                                            {booking.user_name}
-                                                        </p>
-
-                                                        <p className="text-xs text-gray-500">
-                                                            User ID:{" "}
-                                                            {booking.user_id}
-                                                        </p>
-                                                    </div>
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <div>
-                                                        <p className="font-medium text-gray-800">
-                                                            {booking.vehicle_name}
-                                                        </p>
-
-                                                        <p className="text-xs text-gray-500">
-                                                            {booking.brand}{" "}
-                                                            {booking.model || ""}
-                                                        </p>
-                                                    </div>
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <div className="whitespace-nowrap">
-                                                        <p className="text-gray-800">
-                                                            {formatDate(
-                                                                booking.start_date
-                                                            )}
-                                                        </p>
-
-                                                        <p className="text-xs text-gray-500">
-                                                            sampai{" "}
-                                                            {formatDate(
-                                                                booking.end_date
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    {booking.total_days} hari
-                                                </td>
-
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {formatPrice(
-                                                        booking.price_per_day
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">
-                                                    {formatPrice(
-                                                        booking.total_price
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <span
-                                                        className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(
-                                                            booking.status
-                                                        )}`}
-                                                    >
-                                                        {getStatusLabel(
-                                                            booking.status
-                                                        )}
-                                                    </span>
-                                                </td>
-                                                
-                                                  <td className="px-6 py-4">
-                                                    <div className="flex gap-2">
-                                                        <Link
-                                                            href={`/admin/bookings/edit/${booking.id}`}
-                                                            className="rounded-md bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-600 hover:bg-yellow-100"
-                                                        >
-                                                            Edit
-                                                        </Link>
-                                                        
-                                                          <button
-                                                            type="button"
-                                                            className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
-                                                        >
-                                                            Detail
-                                                        </button>
-                                                        
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                handleDelete(
-                                                                    booking.id
-                                                                )
-                                                            }
-                                                            className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
-                                                        >
-                                                            Hapus
-                                                        </button>
-                                                    </div>
-                                                </td>                                             
-                                                
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td
-                                                colSpan="9"
-                                                className="px-6 py-8 text-center text-gray-500"
-                                            >
-                                                Belum ada booking.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                ) : (
+                    <DataTable
+                        columns={columns}
+                        data={bookings}
+                        loading={loading}
+                    />
                 )}
             </div>
+
+            <ConfirmDialog
+                open={showDeleteDialog}
+                type="danger"
+                title="Hapus Booking?"
+                description="Apakah kamu yakin ingin menghapus booking ini? Data yang sudah dihapus tidak dapat dikembalikan."
+                confirmText="Ya, Hapus"
+                cancelText="Batal"
+                onConfirm={handleDelete}
+                onCancel={() => {
+                    if (!deleteLoading) {
+                        setShowDeleteDialog(false);
+                        setSelectedBookingId(null);
+                    }
+                }}
+                loading={deleteLoading}
+            />
+
+            <Toast
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() =>
+                    setToast({
+                        open: false,
+                        type: "success",
+                        message: "",
+                    })
+                }
+            />
         </div>
     );
 }
