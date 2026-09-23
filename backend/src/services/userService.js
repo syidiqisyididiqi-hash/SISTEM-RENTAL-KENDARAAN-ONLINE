@@ -11,6 +11,17 @@ const getAllUsers = async () => {
     return rows;
 };
 
+const getCustomers = async () => {
+    const [rows] = await pool.query(
+        `SELECT id, name, email, phone, address, role, created_at, updated_at
+         FROM users
+         WHERE role = 'user'
+         ORDER BY id DESC`
+    );
+
+    return rows;
+};
+
 const getUserById = async (id) => {
     const [rows] = await pool.query(
         `SELECT id, name, email, phone, address, role, created_at, updated_at
@@ -125,6 +136,7 @@ const updateProfile = async (id, data) => {
 
 module.exports = {
     getAllUsers,
+    getCustomers,
     getUserById,
     createUser,
     updateUser,

@@ -64,6 +64,26 @@ const getAllUsers = async (req, res) => {
     }
 };
 
+const getCustomers = async (req, res) => {
+    try {
+        const users = await userService.getCustomers();
+
+        res.status(200).json({
+            success: true,
+            message: 'Data customer berhasil diambil',
+            data: users
+        });
+    } catch (error) {
+        console.error('Get customers error:', error);
+
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data customer',
+            error: error.message
+        });
+    }
+};
+
 const getUserById = async (req, res) => {
     try {
         const user = await userService.getUserById(req.params.id);
@@ -226,6 +246,7 @@ const updateProfile = async (req, res) => {
 module.exports = {
     createUser,
     getAllUsers,
+    getCustomers,
     getUserById,
     updateUser,
     getProfile,

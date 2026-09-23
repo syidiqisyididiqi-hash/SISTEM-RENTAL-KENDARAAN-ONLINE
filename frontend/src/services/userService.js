@@ -3,6 +3,8 @@ import api from "@/lib/axios";
 const userService = {
     getAll: () => api.get("/users"),
 
+    getCustomers: () => api.get("/users/customers"),
+
     getById: (id) => api.get(`/users/${id}`),
 
     create: (data) => api.post("/users", data),
