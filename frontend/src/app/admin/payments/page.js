@@ -3,14 +3,26 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import paymentService from "@/services/paymentService";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
+import Button from "@/components/ui/Button";
+import LinkButton from "@/components/ui/LinkButton";
+import DataTable from "@/components/ui/DataTable";
 
 export default function PaymentsPage() {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [updatingId, setUpdatingId] = useState(null);
-    const [deletingId, setDeletingId] = useState(null);
-    const [notice, setNotice] = useState("");
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [selectedPaymentId, setSelectedPaymentId] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const [toast, setToast] = useState({
+        open: false,
+        type: "success",
+        message: "",
+    });
 
     useEffect(() => {
         const loadPayments = async () => {
@@ -63,33 +75,42 @@ export default function PaymentsPage() {
         }
     };
 
-    const handleDelete = async (id) => {
-        const confirmed = window.confirm(
-            "Apakah Anda yakin ingin menghapus pembayaran ini?"
-        );
-
-        if (!confirmed) {
+    const handleDelete = async () => {
+        if (!selectedPaymentId) {
             return;
         }
 
-        setDeletingId(id);
-        setError("");
-        setNotice("");
-
         try {
-            await paymentService.remove(id);
+            setDeleteLoading(true);
+
+            await paymentService.remove(selectedPaymentId);
+
             setPayments((currentPayments) =>
-                currentPayments.filter((payment) => payment.id !== id)
+                currentPayments.filter(
+                    (payment) => payment.id !== selectedPaymentId
+                )
             );
-            setNotice("Pembayaran berhasil dihapus.");
+
+            setShowDeleteDialog(false);
+            setSelectedPaymentId(null);
+
+            setToast({
+                open: true,
+                type: "success",
+                message: "Pembayaran berhasil dihapus.",
+            });
         } catch (error) {
             console.error("Error menghapus pembayaran:", error);
-            setError(
-                error.response?.data?.message ||
-                    "Pembayaran gagal dihapus."
-            );
+
+            setToast({
+                open: true,
+                type: "error",
+                message:
+                    error.response?.data?.message ||
+                    "Pembayaran gagal dihapus.",
+            });
         } finally {
-            setDeletingId(null);
+            setDeleteLoading(false);
         }
     };
 
@@ -146,13 +167,13 @@ export default function PaymentsPage() {
     const getStatusLabel = (status) => {
         switch (status) {
             case "pending":
-                return "Pending";
+                return "Menunggu";
 
             case "paid":
-                return "Paid";
+                return "Dibayar";
 
             case "rejected":
-                return "Rejected";
+                return "Ditolak";
 
             default:
                 return status || "-";
@@ -172,6 +193,150 @@ export default function PaymentsPage() {
         }
     };
 
+    const columns = [
+        {
+            key: "no",
+            label: "No",
+            render: (_, index) => index + 1,
+        },
+        {
+            key: "booking_id",
+            label: "Booking",
+            render: (payment) => (
+                <span className="font-medium text-gray-800">
+                    Booking #{payment.booking_id}
+                </span>
+            ),
+        },
+        {
+            key: "payment_method",
+            label: "Metode",
+            render: (payment) => (
+                <span className="text-gray-600">
+                    {getPaymentMethodLabel(payment.payment_method)}
+                </span>
+            ),
+        },
+        {
+            key: "amount",
+            label: "Jumlah",
+            render: (payment) => (
+                <span className="font-medium text-gray-800">
+                    {formatPrice(payment.amount)}
+                </span>
+            ),
+        },
+        {
+            key: "payment_proof",
+            label: "Bukti Pembayaran",
+            render: (payment) =>
+                payment.payment_proof ? (
+                    <a
+                        href={payment.payment_proof}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
+                    >
+                        Lihat Bukti
+                    </a>
+                ) : (
+                    <span className="text-xs text-gray-400">
+                        Tidak ada
+                    </span>
+                ),
+        },
+        {
+            key: "status",
+            label: "Status",
+            render: (payment) => (
+                <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(
+                        payment.status
+                    )}`}
+                >
+                    {getStatusLabel(payment.status)}
+                </span>
+            ),
+        },
+        {
+            key: "verified_at",
+            label: "Diverifikasi",
+            render: (payment) => (
+                <span className="text-gray-600">
+                    {formatDateTime(payment.verified_at)}
+                </span>
+            ),
+        },
+        {
+            key: "created_at",
+            label: "Dibuat",
+            render: (payment) => (
+                <span className="text-gray-600">
+                    {formatDate(payment.created_at)}
+                </span>
+            ),
+        },
+        {
+            key: "actions",
+            label: "Aksi",
+            render: (payment) => (
+                <div className="flex gap-2 whitespace-nowrap">
+                    <LinkButton
+                        href={`/admin/payments/edit/${payment.id}`}
+                    >
+                        Edit
+                    </LinkButton>
+
+                    <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => {
+                            setSelectedPaymentId(payment.id);
+                            setShowDeleteDialog(true);
+                        }}
+                    >
+                        Hapus
+                    </Button>
+
+                    {payment.status === "pending" && (
+                        <>
+                            <Button
+                                type="button"
+                                onClick={() =>
+                                    handleStatusUpdate(
+                                        payment.id,
+                                        "paid"
+                                    )
+                                }
+                                disabled={updatingId === payment.id}
+                            >
+                                {updatingId === payment.id
+                                    ? "Memproses..."
+                                    : "Terima"}
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="danger"
+                                onClick={() =>
+                                    handleStatusUpdate(
+                                        payment.id,
+                                        "rejected"
+                                    )
+                                }
+                                disabled={updatingId === payment.id}
+                            >
+                                {updatingId === payment.id
+                                    ? "Memproses..."
+                                    : "Tolak"}
+                            </Button>
+                        </>
+                    )}
+                </div>
+            ),
+        },
+    ];
+
     return (
         <div>
             <div className="flex items-center justify-between">
@@ -184,234 +349,58 @@ export default function PaymentsPage() {
                         Kelola dan verifikasi pembayaran penyewaan kendaraan.
                     </p>
                 </div>
-
-                <Link
+                
+              <LinkButton
                     href="/admin/payments/create"
-                    className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
+                    variant="add"
                 >
                     + Tambah Payment
-                </Link>
+                </LinkButton>
             </div>
 
             <div className="mt-6">
-                {loading && (
-                    <p className="text-sm text-gray-500">
-                        Memuat data pembayaran...
-                    </p>
-                )}
-
-                {error && (
-                    <p className="text-sm text-red-500">
-                        {error}
-                    </p>
-                )}
-
-                {notice && (
-                    <p className="mb-4 text-sm text-green-600">
-                        {notice}
-                    </p>
-                )}
-
-                {!loading && !error && (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1100px] text-left text-sm">
-                                <thead className="border-b bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            ID
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Booking
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Metode
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Jumlah
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Bukti Pembayaran
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Status
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Diverifikasi
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Dibuat
-                                        </th>
-
-                                        <th className="px-6 py-3 font-semibold text-gray-700">
-                                            Aksi
-                                        </th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {payments.length > 0 ? (
-                                        payments.map((payment) => (
-                                            <tr
-                                                key={payment.id}
-                                                className="border-b last:border-0"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    #{payment.id}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <span className="font-medium text-gray-800">
-                                                        Booking #
-                                                        {payment.booking_id}
-                                                    </span>
-                                                </td>
-
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {getPaymentMethodLabel(
-                                                        payment.payment_method
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4 font-medium text-gray-800">
-                                                    {formatPrice(
-                                                        payment.amount
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    {payment.payment_proof ? (
-                                                        <a
-                                                            href={payment.payment_proof}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
-                                                        >
-                                                            Lihat Bukti
-                                                        </a>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400">
-                                                            Tidak ada
-                                                        </span>
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <span
-                                                        className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusStyle(
-                                                            payment.status
-                                                        )}`}
-                                                    >
-                                                        {getStatusLabel(
-                                                            payment.status
-                                                        )}
-                                                    </span>
-                                                </td>
-
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {formatDateTime(
-                                                        payment.verified_at
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {formatDate(
-                                                        payment.created_at
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-4">
-                                                    <div className="flex gap-2 whitespace-nowrap">
-                                                        <Link
-                                                            href={`/admin/payments/edit/${payment.id}`}
-                                                            className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
-                                                        >
-                                                            Edit
-                                                        </Link>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                handleDelete(
-                                                                    payment.id
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                deletingId ===
-                                                                payment.id
-                                                            }
-                                                            className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                                        >
-                                                            {deletingId ===
-                                                            payment.id
-                                                                ? "Menghapus..."
-                                                                : "Hapus"}
-                                                        </button>
-
-                                                        {payment.status === "pending" && (
-                                                            <>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        handleStatusUpdate(
-                                                                            payment.id,
-                                                                            "paid"
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        updatingId ===
-                                                                        payment.id
-                                                                    }
-                                                                    className="rounded-md bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                                                >
-                                                                    Terima
-                                                                </button>
-
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        handleStatusUpdate(
-                                                                            payment.id,
-                                                                            "rejected"
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        updatingId ===
-                                                                        payment.id
-                                                                    }
-                                                                    className="rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                                                >
-                                                                    Tolak
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td
-                                                colSpan="9"
-                                                className="px-6 py-8 text-center text-gray-500"
-                                            >
-                                                Belum ada pembayaran.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
+                {error ? (
+                <p className="text-sm text-red-500">
+                    {error}
+                </p>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={payments}
+                    loading={loading}
+                />
+            )}
             </div>
+
+            <ConfirmDialog
+                open={showDeleteDialog}
+                type="danger"
+                title="Hapus Pembayaran?"
+                description="Apakah kamu yakin ingin menghapus pembayaran ini? Data yang sudah dihapus tidak dapat dikembalikan."
+                confirmText="Ya, Hapus"
+                cancelText="Batal"
+                onConfirm={handleDelete}
+                onCancel={() => {
+                    if (!deleteLoading) {
+                        setShowDeleteDialog(false);
+                        setSelectedPaymentId(null);
+                    }
+                }}
+                loading={deleteLoading}
+            />
+
+            <Toast
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() =>
+                    setToast({
+                        open: false,
+                        type: "success",
+                        message: "",
+                    })
+                }
+            />
         </div>
     );
 }
