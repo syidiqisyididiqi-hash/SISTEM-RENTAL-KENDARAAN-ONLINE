@@ -109,6 +109,17 @@ const createBooking = async (data) => {
         throw new Error('Status booking tidak valid');
     }
 
+    const [users] = await pool.query(
+        `SELECT id
+         FROM users
+         WHERE id = ? AND role = 'user'`,
+        [user_id]
+    );
+
+    if (users.length === 0) {
+        throw new Error('Customer tidak ditemukan');
+    }
+
     const [vehicles] = await pool.query(
         `SELECT id, price_per_day, status
          FROM vehicles
@@ -129,8 +140,14 @@ const createBooking = async (data) => {
     const start = new Date(start_date);
     const end = new Date(end_date);
 
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new Error('Tanggal booking tidak valid');
+    }
+
     if (end < start) {
-        throw new Error('Tanggal selesai tidak boleh sebelum tanggal mulai');
+        throw new Error(
+            'Tanggal selesai tidak boleh sebelum tanggal mulai'
+        );
     }
 
     const total_days = Math.ceil(
@@ -140,8 +157,25 @@ const createBooking = async (data) => {
     const price_per_day = vehicle.price_per_day;
     const total_price = total_days * price_per_day;
 
-    const [result] = await pool.query(`
-        INSERT INTO bookings (
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const [bookingResult] = await connection.query(`
+            INSERT INTO bookings (
+                user_id,
+                vehicle_id,
+                start_date,
+                end_date,
+                total_days,
+                price_per_day,
+                total_price,
+                status,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
             user_id,
             vehicle_id,
             start_date,
@@ -150,22 +184,37 @@ const createBooking = async (data) => {
             price_per_day,
             total_price,
             status,
-            notes
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-        user_id,
-        vehicle_id,
-        start_date,
-        end_date,
-        total_days,
-        price_per_day,
-        total_price,
-        status,
-        notes || null
-    ]);
+            notes || null
+        ]);
 
-    return getBookingById(result.insertId);
+        const bookingId = bookingResult.insertId;
+
+        await connection.query(`
+            INSERT INTO payments (
+                booking_id,
+                payment_method,
+                payment_proof,
+                amount,
+                status
+            )
+            VALUES (?, ?, ?, ?, ?)
+        `, [
+            bookingId,
+            'bank_transfer',
+            null,
+            total_price,
+            'pending'
+        ]);
+
+        await connection.commit();
+
+        return getBookingById(bookingId);
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 const updateBooking = async (id, data) => {

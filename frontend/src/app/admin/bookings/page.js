@@ -132,7 +132,7 @@ export default function BookingsPage() {
                 return "Dikonfirmasi";
 
             case "ongoing":
-                return "Sedang Berlansung";
+                return "Sedang Berlangsung";
 
             case "completed":
                 return "Selesai";
