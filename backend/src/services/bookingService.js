@@ -121,9 +121,10 @@ const createBooking = async (data) => {
     }
 
     const [vehicles] = await pool.query(
-        `SELECT id, price_per_day, status
-         FROM vehicles
-         WHERE id = ?`,
+        `SELECT id, price_per_day, stock, status
+        FROM vehicles
+        WHERE id = ?
+        FOR UPDATE`,
         [vehicle_id]
     );
 
@@ -131,36 +132,52 @@ const createBooking = async (data) => {
         throw new Error('Kendaraan tidak ditemukan');
     }
 
-    const vehicle = vehicles[0];
-
-    if (vehicle.status !== 'available') {
-        throw new Error('Kendaraan tidak tersedia');
-    }
-
-    const start = new Date(start_date);
-    const end = new Date(end_date);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        throw new Error('Tanggal booking tidak valid');
-    }
-
-    if (end < start) {
-        throw new Error(
-            'Tanggal selesai tidak boleh sebelum tanggal mulai'
-        );
-    }
-
-    const total_days = Math.ceil(
-        (end - start) / (1000 * 60 * 60 * 24)
-    ) + 1;
-
-    const price_per_day = vehicle.price_per_day;
-    const total_price = total_days * price_per_day;
-
     const connection = await pool.getConnection();
 
     try {
         await connection.beginTransaction();
+
+        const [vehicles] = await connection.query(
+            `SELECT id, price_per_day, stock, status
+            FROM vehicles
+            WHERE id = ?
+            FOR UPDATE`,
+            [vehicle_id]
+        );
+
+        if (vehicles.length === 0) {
+            throw new Error('Kendaraan tidak ditemukan');
+        }
+
+        const vehicle = vehicles[0];
+
+        if (vehicle.status !== 'available') {
+            throw new Error('Kendaraan tidak tersedia');
+        }
+
+        if (vehicle.stock < 1) {
+            throw new Error('Stok kendaraan habis');
+        }
+
+        const start = new Date(start_date);
+        const end = new Date(end_date);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            throw new Error('Tanggal booking tidak valid');
+        }
+
+        if (end < start) {
+            throw new Error(
+                'Tanggal selesai tidak boleh sebelum tanggal mulai'
+            );
+        }
+
+        const total_days = Math.ceil(
+            (end - start) / (1000 * 60 * 60 * 24)
+        ) + 1;
+
+        const price_per_day = vehicle.price_per_day;
+        const total_price = total_days * price_per_day;
 
         const [bookingResult] = await connection.query(`
             INSERT INTO bookings (
@@ -205,6 +222,13 @@ const createBooking = async (data) => {
             total_price,
             'pending'
         ]);
+
+        await connection.query(`
+            UPDATE vehicles
+            SET stock = stock - 1
+            WHERE id = ?
+            AND stock > 0
+        `, [vehicle_id]);
 
         await connection.commit();
 
@@ -284,12 +308,40 @@ const updateBookingStatus = async (id, status) => {
         throw new Error('Status booking tidak valid');
     }
 
-    await pool.query(
-        `UPDATE bookings SET status = ? WHERE id = ?`,
-        [status, id]
-    );
+    const connection = await pool.getConnection();
 
-    return getBookingById(id);
+    try {
+        await connection.beginTransaction();
+
+        const previousStatus = booking.status;
+
+        await connection.query(
+            `UPDATE bookings SET status = ? WHERE id = ?`,
+            [status, id]
+        );
+
+        const shouldRestoreStock =
+            !['cancelled', 'rejected'].includes(previousStatus) &&
+            ['cancelled', 'rejected'].includes(status);
+
+        if (shouldRestoreStock) {
+            await connection.query(
+                `UPDATE vehicles
+                 SET stock = stock + 1
+                 WHERE id = ?`,
+                [booking.vehicle_id]
+            );
+        }
+
+        await connection.commit();
+
+        return getBookingById(id);
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 const deleteBooking = async (id) => {
@@ -299,12 +351,37 @@ const deleteBooking = async (id) => {
         throw new Error('Booking tidak ditemukan');
     }
 
-    await pool.query(
-        `DELETE FROM bookings WHERE id = ?`,
-        [id]
-    );
+    const connection = await pool.getConnection();
 
-    return true;
+    try {
+        await connection.beginTransaction();
+
+        await connection.query(
+            `DELETE FROM bookings WHERE id = ?`,
+            [id]
+        );
+
+        const shouldRestoreStock =
+            !['cancelled', 'rejected'].includes(booking.status);
+
+        if (shouldRestoreStock) {
+            await connection.query(
+                `UPDATE vehicles
+                 SET stock = stock + 1
+                 WHERE id = ?`,
+                [booking.vehicle_id]
+            );
+        }
+
+        await connection.commit();
+
+        return true;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 module.exports = {

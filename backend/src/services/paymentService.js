@@ -120,16 +120,21 @@ const updatePaymentStatus = async (id, status) => {
 
         const [paymentRows] = await connection.query(`
             SELECT
-                id,
-                booking_id,
-                status
-            FROM payments
-            WHERE id = ?
+                p.id,
+                p.booking_id,
+                p.status AS payment_status,
+                b.status AS booking_status,
+                b.vehicle_id
+            FROM payments p
+            JOIN bookings b ON p.booking_id = b.id
+            WHERE p.id = ?
             FOR UPDATE
         `, [id]);
 
         if (paymentRows.length === 0) {
-            throw new Error('Pembayaran tidak ditemukan.');
+            throw new Error(
+                'Pembayaran atau booking tidak ditemukan.'
+            );
         }
 
         const payment = paymentRows[0];
@@ -158,6 +163,19 @@ const updatePaymentStatus = async (id, status) => {
                     verified_at = NULL
                 WHERE id = ?
             `, [status, id]);
+
+            const shouldRestoreStock =
+                !['cancelled', 'rejected', 'completed'].includes(
+                    payment.booking_status
+                );
+
+            if (shouldRestoreStock) {
+                await connection.query(`
+                    UPDATE vehicles
+                    SET stock = stock + 1
+                    WHERE id = ?
+                `, [payment.vehicle_id]);
+            }
 
             await connection.query(`
                 UPDATE bookings

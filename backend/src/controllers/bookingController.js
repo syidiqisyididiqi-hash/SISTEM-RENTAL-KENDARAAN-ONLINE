@@ -3,7 +3,7 @@ const bookingService = require('../services/bookingService');
 const getAllBookings = async (req, res) => {
     try {
         const bookings = await bookingService.getAllBookings();
-
+ 
         res.json({
             success: true,
             message: 'Data booking berhasil diambil',
