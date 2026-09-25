@@ -14,9 +14,14 @@ export default function PaymentsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [updatingId, setUpdatingId] = useState(null);
+
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [selectedPaymentId, setSelectedPaymentId] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const [showStatusDialog, setShowStatusDialog] = useState(false);
+    const [selectedStatusPaymentId, setSelectedStatusPaymentId] = useState(null);
+    const [selectedStatus, setSelectedStatus] = useState(null);
 
     const [toast, setToast] = useState({
         open: false,
@@ -46,10 +51,15 @@ export default function PaymentsPage() {
         loadPayments();
     }, []);
 
+    const handleOpenStatusDialog = (id, status) => {
+        setSelectedStatusPaymentId(id);
+        setSelectedStatus(status);
+        setShowStatusDialog(true);
+    };
+
     const handleStatusUpdate = async (id, status) => {
         setUpdatingId(id);
         setError("");
-        setNotice("");
 
         try {
             const response = await paymentService.updateStatus(id, status);
@@ -62,19 +72,30 @@ export default function PaymentsPage() {
                         : payment
                 )
             );
-            setNotice(
-                status === "paid"
-                    ? "Pembayaran berhasil diverifikasi."
-                    : "Pembayaran berhasil ditolak."
-            );
+
+            setToast({
+                open: true,
+                type: "success",
+                message:
+                    status === "paid"
+                        ? "Pembayaran berhasil diverifikasi."
+                        : "Pembayaran berhasil ditolak.",
+            });
         } catch (error) {
             console.error("Error memperbarui status pembayaran:", error);
-            setError("Status pembayaran gagal diperbarui.");
+
+            setToast({
+                open: true,
+                type: "error",
+                message:
+                    error.response?.data?.message ||
+                    "Status pembayaran gagal diperbarui.",
+            });
         } finally {
             setUpdatingId(null);
         }
     };
-
+    
     const handleDelete = async () => {
         if (!selectedPaymentId) {
             return;
@@ -303,32 +324,28 @@ export default function PaymentsPage() {
                             <Button
                                 type="button"
                                 onClick={() =>
-                                    handleStatusUpdate(
+                                    handleOpenStatusDialog(
                                         payment.id,
                                         "paid"
                                     )
                                 }
                                 disabled={updatingId === payment.id}
                             >
-                                {updatingId === payment.id
-                                    ? "Memproses..."
-                                    : "Terima"}
+                                Terima
                             </Button>
 
                             <Button
                                 type="button"
                                 variant="danger"
                                 onClick={() =>
-                                    handleStatusUpdate(
+                                    handleOpenStatusDialog(
                                         payment.id,
                                         "rejected"
                                     )
                                 }
                                 disabled={updatingId === payment.id}
                             >
-                                {updatingId === payment.id
-                                    ? "Memproses..."
-                                    : "Tolak"}
+                                Tolak
                             </Button>
                         </>
                     )}
@@ -387,6 +404,49 @@ export default function PaymentsPage() {
                     }
                 }}
                 loading={deleteLoading}
+            />
+
+            <ConfirmDialog
+                open={showStatusDialog}
+                type={
+                    selectedStatus === "paid"
+                        ? "success"
+                        : "danger"
+                }
+                title={
+                    selectedStatus === "paid"
+                        ? "Terima Pembayaran?"
+                        : "Tolak Pembayaran?"
+                }
+                description={
+                    selectedStatus === "paid"
+                        ? "Apakah kamu yakin ingin menerima dan memverifikasi pembayaran ini?"
+                        : "Apakah kamu yakin ingin menolak pembayaran ini?"
+                }
+                confirmText={
+                    selectedStatus === "paid"
+                        ? "Ya, Terima"
+                        : "Ya, Tolak"
+                }
+                cancelText="Batal"
+                onConfirm={async () => {
+                    await handleStatusUpdate(
+                        selectedStatusPaymentId,
+                        selectedStatus
+                    );
+
+                    setShowStatusDialog(false);
+                    setSelectedStatusPaymentId(null);
+                    setSelectedStatus(null);
+                }}
+                onCancel={() => {
+                    if (updatingId !== selectedStatusPaymentId) {
+                        setShowStatusDialog(false);
+                        setSelectedStatusPaymentId(null);
+                        setSelectedStatus(null);
+                    }
+                }}
+                loading={updatingId === selectedStatusPaymentId}
             />
 
             <Toast

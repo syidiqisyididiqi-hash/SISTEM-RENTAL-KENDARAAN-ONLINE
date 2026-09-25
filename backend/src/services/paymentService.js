@@ -109,34 +109,88 @@ const updatePayment = async (id, data) => {
 };
 
 const updatePaymentStatus = async (id, status) => {
-    let query;
-    let params;
-
-    if (status === 'paid') {
-        query = `
-            UPDATE payments
-            SET
-                status = ?,
-                verified_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        `;
-
-        params = [status, id];
-    } else {
-        query = `
-            UPDATE payments
-            SET
-                status = ?,
-                verified_at = NULL
-            WHERE id = ?
-        `;
-
-        params = [status, id];
+    if (!['pending', 'paid', 'rejected'].includes(status)) {
+        throw new Error('Status pembayaran tidak valid.');
     }
 
-    await pool.query(query, params);
+    const connection = await pool.getConnection();
 
-    return getPaymentById(id);
+    try {
+        await connection.beginTransaction();
+
+        const [paymentRows] = await connection.query(`
+            SELECT
+                id,
+                booking_id,
+                status
+            FROM payments
+            WHERE id = ?
+            FOR UPDATE
+        `, [id]);
+
+        if (paymentRows.length === 0) {
+            throw new Error('Pembayaran tidak ditemukan.');
+        }
+
+        const payment = paymentRows[0];
+
+        if (status === 'paid') {
+            await connection.query(`
+                UPDATE payments
+                SET
+                    status = ?,
+                    verified_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [status, id]);
+
+            await connection.query(`
+                UPDATE bookings
+                SET status = 'confirmed'
+                WHERE id = ?
+            `, [payment.booking_id]);
+        }
+
+        if (status === 'rejected') {
+            await connection.query(`
+                UPDATE payments
+                SET
+                    status = ?,
+                    verified_at = NULL
+                WHERE id = ?
+            `, [status, id]);
+
+            await connection.query(`
+                UPDATE bookings
+                SET status = 'rejected'
+                WHERE id = ?
+            `, [payment.booking_id]);
+        }
+
+        if (status === 'pending') {
+            await connection.query(`
+                UPDATE payments
+                SET
+                    status = ?,
+                    verified_at = NULL
+                WHERE id = ?
+            `, [status, id]);
+
+            await connection.query(`
+                UPDATE bookings
+                SET status = 'pending'
+                WHERE id = ?
+            `, [payment.booking_id]);
+        }
+
+        await connection.commit();
+
+        return getPaymentById(id);
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 const deletePayment = async (id) => {
