@@ -12,6 +12,7 @@ const getAllVehicles = async () => {
             v.year,
             v.license_plate,
             v.price_per_day,
+            v.stock,
             v.description,
             v.image,
             v.status,
@@ -37,6 +38,7 @@ const getVehicleById = async (id) => {
             v.year,
             v.license_plate,
             v.price_per_day,
+            v.stock,
             v.description,
             v.image,
             v.status,
@@ -59,6 +61,7 @@ const createVehicle = async (vehicleData) => {
         year,
         license_plate,
         price_per_day,
+        stock,
         description,
         image,
         status
@@ -73,11 +76,12 @@ const createVehicle = async (vehicleData) => {
             year,
             license_plate,
             price_per_day,
+            stock,
             description,
             image,
             status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
         category_id,
         name,
@@ -86,6 +90,7 @@ const createVehicle = async (vehicleData) => {
         year || null,
         license_plate,
         price_per_day,
+        stock,
         description || null,
         image || null,
         status || 'available'
@@ -103,6 +108,7 @@ const updateVehicle = async (id, vehicleData) => {
         year,
         license_plate,
         price_per_day,
+        stock,
         description,
         image,
         status
@@ -118,6 +124,7 @@ const updateVehicle = async (id, vehicleData) => {
             year = ?,
             license_plate = ?,
             price_per_day = ?,
+            stock = ?,
             description = ?,
             image = ?,
             status = ?
@@ -130,6 +137,7 @@ const updateVehicle = async (id, vehicleData) => {
         year || null,
         license_plate,
         price_per_day,
+        stock,
         description || null,
         image || null,
         status,
@@ -164,12 +172,14 @@ const getAvailableVehicles = async () => {
             v.year,
             v.license_plate,
             v.price_per_day,
+            v.stock,
             v.description,
             v.image,
             v.status
         FROM vehicles v
         JOIN categories c ON v.category_id = c.id
         WHERE v.status = 'available'
+        AND v.stock > 0
         ORDER BY v.id DESC
     `);
 

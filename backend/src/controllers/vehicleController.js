@@ -56,7 +56,8 @@ const createVehicle = async (req, res) => {
             name,
             brand,
             license_plate,
-            price_per_day
+            price_per_day,
+            stock
         } = req.body;
 
         if (
@@ -64,16 +65,25 @@ const createVehicle = async (req, res) => {
             !name ||
             !brand ||
             !license_plate ||
-            !price_per_day
+            !price_per_day ||
+            stock === undefined
         ) {
             return res.status(400).json({
                 success: false,
-                message: 'category_id, name, brand, license_plate, dan price_per_day wajib diisi'
+                message: 'category_id, name, brand, license_plate, price_per_day, dan stock wajib diisi'
+            });
+        }
+
+        if (!Number.isInteger(Number(stock)) || Number(stock) < 1) {
+            return res.status(400).json({
+                success: false,
+                message: 'Stock harus berupa angka minimal 1'
             });
         }
 
         const vehicle = await vehicleService.createVehicle({
             ...req.body,
+            stock: Number(stock),
             image: req.file ? `/uploads/vehicles/${req.file.filename}` : null
         });
 
@@ -117,6 +127,7 @@ const updateVehicle = async (req, res) => {
             brand,
             license_plate,
             price_per_day,
+            stock,
             status
         } = req.body;
 
@@ -126,11 +137,19 @@ const updateVehicle = async (req, res) => {
             !brand ||
             !license_plate ||
             !price_per_day ||
+            stock === undefined ||
             !status
         ) {
             return res.status(400).json({
                 success: false,
-                message: 'category_id, name, brand, license_plate, price_per_day, dan status wajib diisi'
+                message: 'category_id, name, brand, license_plate, price_per_day, stock, dan status wajib diisi'
+            });
+        }
+
+        if (!Number.isInteger(Number(stock)) || Number(stock) < 1) {
+            return res.status(400).json({
+                success: false,
+                message: 'Stock harus berupa angka minimal 1'
             });
         }
 
@@ -158,6 +177,7 @@ const updateVehicle = async (req, res) => {
 
         const vehicle = await vehicleService.updateVehicle(id, {
             ...req.body,
+            stock: Number(stock),
             image: req.file
                 ? `/uploads/vehicles/${req.file.filename}`
                 : currentVehicle.image
