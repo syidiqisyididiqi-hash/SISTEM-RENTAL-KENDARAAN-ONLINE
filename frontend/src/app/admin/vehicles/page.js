@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+
 import vehicleService from "@/services/vehicleService";
+
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
@@ -10,12 +12,16 @@ import LinkButton from "@/components/ui/LinkButton";
 import DataTable from "@/components/ui/DataTable";
 
 const getImageUrl = (image) => {
-    if (!image) return "";
+    if (!image) {
+        return "";
+    }
 
     if (typeof image === "string") {
         const imagePath = image.trim();
 
-        if (!imagePath || imagePath === "[object Object]") return "";
+        if (!imagePath || imagePath === "[object Object]") {
+            return "";
+        }
 
         if (
             imagePath.startsWith("http://") ||
@@ -24,7 +30,8 @@ const getImageUrl = (image) => {
             return imagePath;
         }
 
-        const normalizedPath = imagePath.replace(/^\/+/, "");
+        const normalizedPath = imagePath.replace(/^[/\\]+/, "");
+
         const uploadPath = normalizedPath.startsWith("uploads/")
             ? normalizedPath
             : `uploads/vehicles/${normalizedPath}`;
@@ -33,8 +40,6 @@ const getImageUrl = (image) => {
     }
 
     if (typeof image === "object") {
-        console.log("IMAGE OBJECT:", image);
-
         const possibleKeys = [
             "url",
             "image_url",
@@ -51,7 +56,10 @@ const getImageUrl = (image) => {
         for (const key of possibleKeys) {
             const value = image[key];
 
-            if (typeof value === "string" && value.trim() !== "") {
+            if (
+                typeof value === "string" &&
+                value.trim() !== ""
+            ) {
                 const imagePath = value.trim();
 
                 if (
@@ -61,32 +69,30 @@ const getImageUrl = (image) => {
                     return imagePath;
                 }
 
-                const normalizedPath = imagePath.replace(/^\/+/, "");
-                const uploadPath = normalizedPath.startsWith("uploads/")
-                    ? normalizedPath
-                    : `uploads/vehicles/${normalizedPath}`;
+                const normalizedPath =
+                    imagePath.replace(/^[/\\]+/, "");
+
+                const uploadPath =
+                    normalizedPath.startsWith("uploads/")
+                        ? normalizedPath
+                        : `uploads/vehicles/${normalizedPath}`;
 
                 return `http://localhost:5000/${uploadPath}`;
             }
         }
-
-        console.error(
-            "Object image tidak mempunyai path/url string:",
-            image
-        );
 
         return "";
     }
 
     return "";
 };
+
 export default function VehiclesPage() {
     const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
     const [failedImages, setFailedImages] = useState(new Set());
     const [error, setError] = useState("");
-
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
 
@@ -101,18 +107,13 @@ export default function VehiclesPage() {
             try {
                 const response = await vehicleService.getAll();
 
-                console.log("Response vehicles:", response);
-                console.log("Data vehicles:", response.data?.data);
-
                 setVehicles(response.data?.data || []);
                 setError("");
             } catch (error) {
-                console.error(
-                    "Error mengambil data kendaraan:",
-                    error
+                setError(
+                    error.response?.data?.message ||
+                        "Gagal mengambil data kendaraan."
                 );
-
-                setError("Gagal mengambil data kendaraan.");
             } finally {
                 setLoading(false);
             }
@@ -147,14 +148,17 @@ export default function VehiclesPage() {
                 message: "Kendaraan berhasil dihapus.",
             });
         } catch (error) {
-            console.error("Error menghapus kendaraan:", error);
+            const message =
+                error.response?.data?.message ||
+                "Gagal menghapus kendaraan.";
+
+            setShowDeleteDialog(false);
+            setSelectedVehicle(null);
 
             setToast({
                 open: true,
                 type: "error",
-                message:
-                    error.response?.data?.message ||
-                    "Gagal menghapus kendaraan.",
+                message,
             });
         } finally {
             setDeletingId(null);
@@ -162,14 +166,14 @@ export default function VehiclesPage() {
     };
 
     const formatPrice = (price) => {
-            return new Intl.NumberFormat("id-ID", {
-                style: "currency",
-                currency: "IDR",
-                minimumFractionDigits: 0,
-            }).format(price || 0);
-        };
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(price || 0);
+    };
 
-        const columns = [
+    const columns = [
         {
             key: "no",
             label: "No",
@@ -191,9 +195,11 @@ export default function VehiclesPage() {
                         unoptimized
                         className="h-14 w-20 rounded-lg border border-gray-200 object-cover"
                         onError={() => {
-                            setFailedImages((current) =>
-                                new Set(current).add(vehicle.id)
-                            );
+                            setFailedImages((current) => {
+                                const updated = new Set(current);
+                                updated.add(vehicle.id);
+                                return updated;
+                            });
                         }}
                     />
                 ) : (
@@ -214,7 +220,9 @@ export default function VehiclesPage() {
 
                     <p className="text-xs text-gray-500">
                         {vehicle.brand} {vehicle.model || ""}
-                        {vehicle.year ? ` • ${vehicle.year}` : ""}
+                        {vehicle.year
+                            ? ` • ${vehicle.year}`
+                            : ""}
                     </p>
                 </div>
             ),
@@ -243,6 +251,15 @@ export default function VehiclesPage() {
             render: (vehicle) => (
                 <span className="text-gray-600">
                     {formatPrice(vehicle.price_per_day)}
+                </span>
+            ),
+        },
+        {
+            key: "stock",
+            label: "Stok",
+            render: (vehicle) => (
+                <span className="font-medium text-gray-700">
+                    {vehicle.stock ?? 0} unit
                 </span>
             ),
         },
@@ -293,7 +310,6 @@ export default function VehiclesPage() {
 
     return (
         <div>
-
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">
@@ -311,7 +327,6 @@ export default function VehiclesPage() {
                 >
                     + Tambah Kendaraan
                 </LinkButton>
-
             </div>
 
             <div className="mt-6">
@@ -361,7 +376,6 @@ export default function VehiclesPage() {
                     })
                 }
             />
-
         </div>
     );
 }

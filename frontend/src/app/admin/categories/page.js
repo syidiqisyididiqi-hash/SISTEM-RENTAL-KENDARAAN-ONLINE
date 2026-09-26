@@ -67,7 +67,6 @@ export default function CategoriesPage() {
                 message: "Kategori berhasil dihapus.",
             });
         } catch (error) {
-            console.error("Error menghapus kategori:", error);
 
             const message =
                 error.response?.data?.message ||

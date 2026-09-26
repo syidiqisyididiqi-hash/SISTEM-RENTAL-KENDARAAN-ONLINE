@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import paymentService from "@/services/paymentService";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -37,12 +36,10 @@ export default function PaymentsPage() {
                 setPayments(response.data?.data || []);
                 setError("");
             } catch (error) {
-                console.error(
-                    "Error mengambil data pembayaran:",
-                    error
+                setError(
+                    error.response?.data?.message ||
+                        "Gagal mengambil data pembayaran."
                 );
-
-                setError("Gagal mengambil data pembayaran.");
             } finally {
                 setLoading(false);
             }
@@ -82,8 +79,6 @@ export default function PaymentsPage() {
                         : "Pembayaran berhasil ditolak.",
             });
         } catch (error) {
-            console.error("Error memperbarui status pembayaran:", error);
-
             setToast({
                 open: true,
                 type: "error",
@@ -95,7 +90,7 @@ export default function PaymentsPage() {
             setUpdatingId(null);
         }
     };
-    
+
     const handleDelete = async () => {
         if (!selectedPaymentId) {
             return;
@@ -103,6 +98,7 @@ export default function PaymentsPage() {
 
         try {
             setDeleteLoading(true);
+            setError("");
 
             await paymentService.remove(selectedPaymentId);
 
@@ -121,14 +117,17 @@ export default function PaymentsPage() {
                 message: "Pembayaran berhasil dihapus.",
             });
         } catch (error) {
-            console.error("Error menghapus pembayaran:", error);
+            const message =
+                error.response?.data?.message ||
+                "Pembayaran gagal dihapus.";
+
+            setShowDeleteDialog(false);
+            setSelectedPaymentId(null);
 
             setToast({
                 open: true,
                 type: "error",
-                message:
-                    error.response?.data?.message ||
-                    "Pembayaran gagal dihapus.",
+                message,
             });
         } finally {
             setDeleteLoading(false);
@@ -366,8 +365,8 @@ export default function PaymentsPage() {
                         Kelola dan verifikasi pembayaran penyewaan kendaraan.
                     </p>
                 </div>
-                
-              <LinkButton
+
+                <LinkButton
                     href="/admin/payments/create"
                     variant="add"
                 >
@@ -377,16 +376,16 @@ export default function PaymentsPage() {
 
             <div className="mt-6">
                 {error ? (
-                <p className="text-sm text-red-500">
-                    {error}
-                </p>
-            ) : (
-                <DataTable
-                    columns={columns}
-                    data={payments}
-                    loading={loading}
-                />
-            )}
+                    <p className="text-sm text-red-500">
+                        {error}
+                    </p>
+                ) : (
+                    <DataTable
+                        columns={columns}
+                        data={payments}
+                        loading={loading}
+                    />
+                )}
             </div>
 
             <ConfirmDialog

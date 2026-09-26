@@ -129,9 +129,16 @@ const deleteBooking = async (req, res) => {
             message: 'Booking berhasil dihapus'
         });
     } catch (error) {
-        res.status(400).json({
+        if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
+            return res.status(409).json({
+                success: false,
+                message: 'Booking tidak dapat dihapus karena masih memiliki data pembayaran.'
+            });
+        }
+
+        res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Gagal menghapus booking.'
         });
     }
 };

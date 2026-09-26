@@ -31,8 +31,10 @@ export default function BookingsPage() {
                 setBookings(response.data?.data || []);
                 setError("");
             } catch (error) {
-                console.error("Error mengambil data booking:", error);
-                setError("Gagal mengambil data booking.");
+                setError(
+                    error.response?.data?.message ||
+                        "Gagal mengambil data booking."
+                );
             } finally {
                 setLoading(false);
             }
@@ -48,6 +50,7 @@ export default function BookingsPage() {
 
         try {
             setDeleteLoading(true);
+            setError("");
 
             await bookingService.remove(selectedBookingId);
 
@@ -66,12 +69,17 @@ export default function BookingsPage() {
                 message: "Booking berhasil dihapus.",
             });
         } catch (error) {
-            console.error("Error menghapus booking:", error);
+            const message =
+                error.response?.data?.message ||
+                "Gagal menghapus booking.";
+
+            setShowDeleteDialog(false);
+            setSelectedBookingId(null);
 
             setToast({
                 open: true,
                 type: "error",
-                message: "Gagal menghapus booking.",
+                message,
             });
         } finally {
             setDeleteLoading(false);
