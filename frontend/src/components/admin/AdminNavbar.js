@@ -2,7 +2,8 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Menu, ChevronDown, User, LogOut } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const subscribeToUser = (onChange) => {
     const handleChange = () => onChange();
@@ -27,6 +28,7 @@ const getUserSnapshot = () => {
 export default function AdminNavbar({ onMenuClick }) {
     const router = useRouter();
     const [showMenu, setShowMenu] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const storedUser = useSyncExternalStore(
         subscribeToUser,
@@ -46,6 +48,7 @@ export default function AdminNavbar({ onMenuClick }) {
 
     const userName = user?.name || "Administrator";
     const userRole = user?.role || "Admin";
+    const userEmail = user?.email || "admin@rental.com";
     const userInitial = userName.charAt(0).toUpperCase();
 
     const handleProfile = () => {
@@ -53,8 +56,13 @@ export default function AdminNavbar({ onMenuClick }) {
         router.push("/admin/profile");
     };
 
-    const handleLogout = () => {
+    const handleLogoutClick = () => {
         setShowMenu(false);
+        setShowLogoutConfirm(true);
+    };
+
+    const handleConfirmLogout = () => {
+        setShowLogoutConfirm(false);
 
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -63,67 +71,99 @@ export default function AdminNavbar({ onMenuClick }) {
     };
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6">
-            <div className="flex items-center gap-3">
-                <button
-                    type="button"
-                    onClick={onMenuClick}
-                    className="rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 md:hidden"
-                    aria-label="Buka menu"
-                >
-                    <Menu className="h-6 w-6" />
-                </button>
+        <>
+            <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-gray-100 bg-white/95 backdrop-blur-md px-4 md:px-8">
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={onMenuClick}
+                        className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
+                        aria-label="Buka menu"
+                    >
+                        <Menu className="h-6 w-6" />
+                    </button>
 
-                <h2 className="text-lg font-semibold text-gray-800">
-                    Admin Panel
-                </h2>
-            </div>
-
-            <div className="relative">
-                <button
-                    type="button"
-                    onClick={() => setShowMenu(!showMenu)}
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 transition hover:bg-gray-100 md:gap-3 md:px-3"
-                >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-                        {userInitial}
-                    </div>
-
-                    <div className="hidden text-left sm:block">
-                        <p className="text-sm font-semibold text-gray-800">
-                            {userName}
-                        </p>
-
-                        <p className="text-xs text-gray-500">
-                            {userRole}
+                    <div className="hidden sm:block">
+                        <h2 className="text-base font-bold text-gray-800">
+                            Admin Panel
+                        </h2>
+                        <p className="text-[11px] text-gray-400">
+                            Kelola sistem dan reservasi
                         </p>
                     </div>
+                </div>
 
-                    <span className="text-xs text-gray-400">
-                        ▼
-                    </span>
-                </button>
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={() => setShowMenu(!showMenu)}
+                        className="flex items-center gap-3 rounded-xl p-1.5 transition-all duration-150 hover:bg-gray-50"
+                    >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md shadow-blue-500/20 ring-2 ring-blue-100">
+                            {userInitial}
+                        </div>
 
-                {showMenu && (
-                    <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                        <button
-                            type="button"
-                            onClick={handleProfile}
-                            className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-100"
-                        >
-                            Profile
-                        </button>
+                        <div className="hidden text-left sm:block">
+                            <p className="text-xs font-bold text-gray-900 leading-tight">
+                                {userName}
+                            </p>
+                            <p className="text-[11px] font-medium text-gray-400">
+                                {userRole}
+                            </p>
+                        </div>
 
-                        <button
-                            type="button"
-                            onClick={handleLogout}
-                            className="block w-full px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-gray-100"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                )}
-            </div>
-        </header>
+                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${showMenu ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {showMenu && (
+                        <>
+                            <div 
+                                className="fixed inset-0 z-40" 
+                                onClick={() => setShowMenu(false)} 
+                            />
+                            <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl transition-all">
+                                <div className="border-b border-gray-100 px-3 py-2.5">
+                                    <p className="text-xs font-bold text-gray-900">{userName}</p>
+                                    <p className="truncate text-[11px] text-gray-400">{userEmail}</p>
+                                </div>
+
+                                <div className="py-1">
+                                    <button
+                                        type="button"
+                                        onClick={handleProfile}
+                                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 hover:text-blue-600"
+                                    >
+                                        <User className="h-4 w-4 text-gray-400" />
+                                        <span>Profil Saya</span>
+                                    </button>
+                                </div>
+
+                                <div className="border-t border-gray-100 pt-1">
+                                    <button
+                                        type="button"
+                                        onClick={handleLogoutClick}
+                                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+                                    >
+                                        <LogOut className="h-4 w-4 text-red-500" />
+                                        <span>Keluar</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </header>
+
+            <ConfirmDialog
+                open={showLogoutConfirm}
+                onCancel={() => setShowLogoutConfirm(false)}
+                onConfirm={handleConfirmLogout}
+                title="Konfirmasi Keluar"
+                description="Apakah Anda yakin ingin keluar dari halaman admin?"
+                confirmText="Keluar"
+                cancelText="Batal"
+                type="danger"
+            />
+        </>
     );
 }
