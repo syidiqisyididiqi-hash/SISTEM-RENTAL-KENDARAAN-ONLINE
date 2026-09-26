@@ -29,6 +29,6 @@ router.get('/:id', getUserById);
 
 router.put('/:id', updateUser);
 
-router.delete('/:id', deleteUser);
+router.delete('/:id', authMiddleware, deleteUser);
 
 module.exports = router;

@@ -31,8 +31,10 @@ export default function UsersPage() {
                 setUsers(response.data?.data || []);
                 setError("");
             } catch (error) {
-                console.error("Error mengambil data user:", error);
-                setError("Gagal mengambil data user.");
+                setError(
+                    error.response?.data?.message ||
+                        "Gagal mengambil data user."
+                );
             } finally {
                 setLoading(false);
             }
@@ -48,6 +50,7 @@ export default function UsersPage() {
 
         try {
             setDeleteLoading(true);
+            setError("");
 
             await userService.remove(selectedUserId);
 
@@ -66,12 +69,17 @@ export default function UsersPage() {
                 message: "User berhasil dihapus.",
             });
         } catch (error) {
-            console.error("Error menghapus user:", error);
+            const message =
+                error.response?.data?.message ||
+                "Gagal menghapus user.";
+
+            setShowDeleteDialog(false);
+            setSelectedUserId(null);
 
             setToast({
                 open: true,
                 type: "error",
-                message: "Gagal menghapus user.",
+                message,
             });
         } finally {
             setDeleteLoading(false);
@@ -107,94 +115,94 @@ export default function UsersPage() {
     };
 
     const columns = [
-    {
-        key: "no",
-        label: "No",
-        render: (_, index) => index + 1,
-    },
-    {
-        key: "name",
-        label: "Nama",
-        render: (user) => (
-            <p className="font-medium text-gray-800">
-                {user.name}
-            </p>
-        ),
-    },
-    {
-        key: "email",
-        label: "Email",
-        render: (user) => (
-            <span className="text-gray-600">
-                {user.email}
-            </span>
-        ),
-    },
-    {
-        key: "phone",
-        label: "Telepon",
-        render: (user) => (
-            <span className="text-gray-600">
-                {user.phone || "-"}
-            </span>
-        ),
-    },
-    {
-        key: "address",
-        label: "Alamat",
-        render: (user) => (
-            <p className="max-w-[250px] truncate text-gray-600">
-                {user.address || "-"}
-            </p>
-        ),
-    },
-    {
-        key: "role",
-        label: "Role",
-        render: (user) => (
-            <span
-                className={`rounded-full px-3 py-1 text-xs font-medium ${getRoleStyle(
-                    user.role
-                )}`}
-            >
-                {getRoleLabel(user.role)}
-            </span>
-        ),
-    },
-    {
-        key: "created_at",
-        label: "Terdaftar",
-        render: (user) => (
-            <span className="text-gray-600">
-                {formatDate(user.created_at)}
-            </span>
-        ),
-    },
-    {
-        key: "actions",
-        label: "Aksi",
-        render: (user) => (
-            <div className="flex gap-2">
-                <LinkButton
-                    href={`/admin/users/edit/${user.id}`}
+        {
+            key: "no",
+            label: "No",
+            render: (_, index) => index + 1,
+        },
+        {
+            key: "name",
+            label: "Nama",
+            render: (user) => (
+                <p className="font-medium text-gray-800">
+                    {user.name}
+                </p>
+            ),
+        },
+        {
+            key: "email",
+            label: "Email",
+            render: (user) => (
+                <span className="text-gray-600">
+                    {user.email}
+                </span>
+            ),
+        },
+        {
+            key: "phone",
+            label: "Telepon",
+            render: (user) => (
+                <span className="text-gray-600">
+                    {user.phone || "-"}
+                </span>
+            ),
+        },
+        {
+            key: "address",
+            label: "Alamat",
+            render: (user) => (
+                <p className="max-w-[250px] truncate text-gray-600">
+                    {user.address || "-"}
+                </p>
+            ),
+        },
+        {
+            key: "role",
+            label: "Role",
+            render: (user) => (
+                <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${getRoleStyle(
+                        user.role
+                    )}`}
                 >
-                    Edit
-                </LinkButton>
+                    {getRoleLabel(user.role)}
+                </span>
+            ),
+        },
+        {
+            key: "created_at",
+            label: "Terdaftar",
+            render: (user) => (
+                <span className="text-gray-600">
+                    {formatDate(user.created_at)}
+                </span>
+            ),
+        },
+        {
+            key: "actions",
+            label: "Aksi",
+            render: (user) => (
+                <div className="flex gap-2">
+                    <LinkButton
+                        href={`/admin/users/edit/${user.id}`}
+                    >
+                        Edit
+                    </LinkButton>
 
-                <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => {
-                        setSelectedUserId(user.id);
-                        setShowDeleteDialog(true);
-                    }}
-                >
-                    Hapus
-                </Button>
-            </div>
-        ),
-    },
-];
+                    <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => {
+                            setSelectedUserId(user.id);
+                            setShowDeleteDialog(true);
+                        }}
+                    >
+                        Hapus
+                    </Button>
+                </div>
+            ),
+        },
+    ];
 
     return (
         <div>
@@ -216,7 +224,7 @@ export default function UsersPage() {
                     + Tambah User
                 </LinkButton>
             </div>
-    
+
             <div className="mt-6">
                 {error ? (
                     <p className="text-sm text-red-500">
@@ -261,7 +269,5 @@ export default function UsersPage() {
                 }
             />
         </div>
-        
     );
-    
 }

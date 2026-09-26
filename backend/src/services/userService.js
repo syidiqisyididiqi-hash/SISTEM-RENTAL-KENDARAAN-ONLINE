@@ -76,38 +76,13 @@ const updateUser = async (id, data) => {
 };
 
 const deleteUser = async (id) => {
-    const connection = await pool.getConnection();
+    const [result] = await pool.query(
+        `DELETE FROM users
+         WHERE id = ?`,
+        [id]
+    );
 
-    try {
-        await connection.beginTransaction();
-
-        await connection.query(
-            `DELETE payments
-             FROM payments
-             INNER JOIN bookings ON bookings.id = payments.booking_id
-             WHERE bookings.user_id = ?`,
-            [id]
-        );
-
-        await connection.query(
-            `DELETE FROM bookings WHERE user_id = ?`,
-            [id]
-        );
-
-        const [result] = await connection.query(
-            `DELETE FROM users WHERE id = ?`,
-            [id]
-        );
-
-        await connection.commit();
-
-        return result.affectedRows > 0;
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
+    return result.affectedRows > 0;
 };
 
 const updateProfile = async (id, data) => {
