@@ -19,4 +19,24 @@ api.interceptors.request.use(
     }
 );
 
+api.interceptors.response.use(
+    (response) => {
+        return response;
+    },
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+
+            window.dispatchEvent(new Event("auth-change"));
+        }
+
+        if (error.response?.status === 403) {
+            window.dispatchEvent(new Event("auth-forbidden"));
+        }
+
+        return Promise.reject(error);
+    }
+);
+
 export default api;

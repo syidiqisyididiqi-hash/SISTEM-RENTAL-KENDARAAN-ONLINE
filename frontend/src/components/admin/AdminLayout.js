@@ -12,28 +12,53 @@ export default function AdminLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        const storedUser = localStorage.getItem("user");
+        const checkAuth = () => {
+            const token = localStorage.getItem("token");
+            const storedUser = localStorage.getItem("user");
 
-        if (!token || !storedUser) {
-            router.replace("/login");
-            return;
-        }
-
-        try {
-            const user = JSON.parse(storedUser);
-
-            if (user.role !== "admin") {
-                router.replace("/user/dashboard");
+            if (!token || !storedUser) {
+                setAuthorized(false);
+                router.replace("/login");
                 return;
             }
 
-            requestAnimationFrame(() => setAuthorized(true));
-        } catch (error) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            router.replace("/login");
-        }
+            try {
+                const user = JSON.parse(storedUser);
+
+                if (user.role !== "admin") {
+                    setAuthorized(false);
+                    router.replace("/user/dashboard");
+                    return;
+                }
+
+                setAuthorized(true);
+            } catch (error) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+
+                setAuthorized(false);
+                router.replace("/login");
+            }
+        };
+
+        checkAuth();
+
+        const handleAuthChange = () => {
+            checkAuth();
+        };
+
+        const handleAuthForbidden = () => {
+            setAuthorized(false);
+            router.replace("/user/dashboard");
+        };
+
+        window.addEventListener("auth-change", handleAuthChange);
+        window.addEventListener("auth-forbidden", handleAuthForbidden);
+
+        return () => {
+            window.removeEventListener("auth-change", handleAuthChange);
+            window.removeEventListener("auth-forbidden", handleAuthForbidden);
+        };
     }, [router]);
 
     if (!authorized) {
