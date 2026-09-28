@@ -1,4 +1,5 @@
 const express = require('express');
+
 const upload = require('../middleware/uploadMiddleware');
 
 const {
@@ -10,18 +11,53 @@ const {
     deleteVehicle
 } = require('../controllers/vehicleController');
 
+const authMiddleware = require('../middleware/authMiddleware');
+const adminMiddleware = require('../middleware/adminMiddleware');
+
 const router = express.Router();
 
-router.get('/', getAllVehicles);
+router.get(
+    '/',
+    authMiddleware,
+    adminMiddleware,
+    getAllVehicles
+);
 
-router.get('/available', getAvailableVehicles);
+router.get(
+    '/available',
+    authMiddleware,
+    adminMiddleware,
+    getAvailableVehicles
+);
 
-router.get('/:id', getVehicleById);
+router.get(
+    '/:id',
+    authMiddleware,
+    adminMiddleware,
+    getVehicleById
+);
 
-router.post('/', upload.single('image'), createVehicle);
+router.post(
+    '/',
+    authMiddleware,
+    adminMiddleware,
+    upload.single('image'),
+    createVehicle
+);
 
-router.put('/:id', upload.single('image'), updateVehicle);
+router.put(
+    '/:id',
+    authMiddleware,
+    adminMiddleware,
+    upload.single('image'),
+    updateVehicle
+);
 
-router.delete('/:id', deleteVehicle);
+router.delete(
+    '/:id',
+    authMiddleware,
+    adminMiddleware,
+    deleteVehicle
+);
 
 module.exports = router;

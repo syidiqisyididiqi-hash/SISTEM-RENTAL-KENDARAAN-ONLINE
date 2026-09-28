@@ -10,20 +10,58 @@ const {
     deletePayment
 } = require('../controllers/paymentController');
 
+const authMiddleware = require('../middleware/authMiddleware');
+const adminMiddleware = require('../middleware/adminMiddleware');
+
 const router = express.Router();
 
-router.get('/', getAllPayments);
+router.get(
+    '/',
+    authMiddleware,
+    adminMiddleware,
+    getAllPayments
+);
 
-router.get('/booking/:bookingId', getPaymentByBookingId);
+router.get(
+    '/booking/:bookingId',
+    authMiddleware,
+    adminMiddleware,
+    getPaymentByBookingId
+);
 
-router.get('/:id', getPaymentById);
+router.get(
+    '/:id',
+    authMiddleware,
+    adminMiddleware,
+    getPaymentById
+);
 
-router.post('/', createPayment);
+router.post(
+    '/',
+    authMiddleware,
+    adminMiddleware,
+    createPayment
+);
 
-router.put('/:id', updatePayment);
+router.put(
+    '/:id',
+    authMiddleware,
+    adminMiddleware,
+    updatePayment
+);
 
-router.patch('/:id/status', updatePaymentStatus);
+router.patch(
+    '/:id/status',
+    authMiddleware,
+    adminMiddleware,
+    updatePaymentStatus
+);
 
-router.delete('/:id', deletePayment);
+router.delete(
+    '/:id',
+    authMiddleware,
+    adminMiddleware,
+    deletePayment
+);
 
 module.exports = router;
