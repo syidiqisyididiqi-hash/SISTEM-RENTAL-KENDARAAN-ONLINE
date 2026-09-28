@@ -14,6 +14,7 @@ import {
     CarFront, 
     CalendarCheck, 
     CreditCard, 
+    FileText,
     LogOut,
     User
 } from "lucide-react";
@@ -45,6 +46,7 @@ const menus = [
     { name: "Kendaraan", href: "/admin/vehicles", icon: CarFront },
     { name: "Pemesanan", href: "/admin/bookings", icon: CalendarCheck },
     { name: "Pembayaran", href: "/admin/payments", icon: CreditCard },
+    { name: "Laporan", href: "/admin/reports", icon: FileText },
 ];
 
 export default function AdminSidebar({ isOpen, onClose }) {
