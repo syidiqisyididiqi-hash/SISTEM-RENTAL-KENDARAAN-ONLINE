@@ -118,7 +118,7 @@ export default function CreateCategoryPage() {
                 )}
 
                 <form onSubmit={handleSubmit} className="p-6 md:p-8">
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 
                         <div>
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
@@ -142,7 +142,7 @@ export default function CreateCategoryPage() {
                             </div>
                         </div>
 
-                        <div>
+                        <div className="md:col-span-2">
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Deskripsi
                             </label>

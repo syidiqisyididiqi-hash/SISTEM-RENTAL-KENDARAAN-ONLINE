@@ -258,7 +258,7 @@ export default function CreateBookingPage() {
                 )}
 
                 <form onSubmit={handleSubmit} className="p-6 md:p-8">
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div>
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 User / Pelanggan
@@ -325,7 +325,7 @@ export default function CreateBookingPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-6 md:col-span-2 md:grid-cols-2">
                             <div>
                                 <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                     Tanggal Mulai
@@ -395,7 +395,7 @@ export default function CreateBookingPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-gray-200/80 bg-slate-50 p-5 shadow-xs">
+                        <div className="rounded-xl border border-gray-200/80 bg-slate-50 p-5 shadow-xs md:col-span-2">
                             <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-200/60">
                                 <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />

@@ -11,7 +11,18 @@ import LinkButton from "@/components/ui/LinkButton";
 import Button from "@/components/ui/Button";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { CalendarDays, Car } from "lucide-react";
+import {
+    BadgeInfo,
+    Banknote,
+    Building2,
+    CalendarDays,
+    Car,
+    CircleCheck,
+    Hash,
+    ImagePlus,
+    Package,
+    Tag,
+} from "lucide-react";
 
 export default function CreateVehiclePage() {
     const router = useRouter();
@@ -197,69 +208,81 @@ export default function CreateVehiclePage() {
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Kategori
                             </label>
-                            <select
-                                name="category_id"
-                                value={formData.category_id}
-                                onChange={handleChange}
-                                required
-                                disabled={loadingCategories}
-                                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100 disabled:bg-gray-100"
-                            >
-                                <option value="">
-                                    {loadingCategories
-                                        ? "Memuat kategori..."
-                                        : "Pilih kategori"}
-                                </option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.name}
+                            <div className="relative rounded-lg shadow-xs">
+                                <Tag className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <select
+                                    name="category_id"
+                                    value={formData.category_id}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={loadingCategories}
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-10 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100 disabled:bg-gray-100"
+                                >
+                                    <option value="">
+                                        {loadingCategories
+                                            ? "Memuat kategori..."
+                                            : "Pilih kategori"}
                                     </option>
-                                ))}
-                            </select>
+                                    {categories.map((category) => (
+                                        <option key={category.id} value={category.id}>
+                                            {category.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div>
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Nama Kendaraan
                             </label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                placeholder="Contoh: Avanza"
-                                required
-                                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            />
+                            <div className="relative rounded-lg shadow-xs">
+                                <Car className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: Avanza"
+                                    required
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-10 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                />
+                            </div>
                         </div>
 
                         <div>
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Brand
                             </label>
-                            <input
-                                type="text"
-                                name="brand"
-                                value={formData.brand}
-                                onChange={handleChange}
-                                placeholder="Contoh: Toyota"
-                                required
-                                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            />
+                            <div className="relative rounded-lg shadow-xs">
+                                <Building2 className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    name="brand"
+                                    value={formData.brand}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: Toyota"
+                                    required
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-10 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                />
+                            </div>
                         </div>
 
                         <div>
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Model
                             </label>
-                            <input
-                                type="text"
-                                name="model"
-                                value={formData.model}
-                                onChange={handleChange}
-                                placeholder="Contoh: 1.5 G"
-                                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            />
+                            <div className="relative rounded-lg shadow-xs">
+                                <BadgeInfo className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    name="model"
+                                    value={formData.model}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: 1.5 G"
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-10 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                />
+                            </div>
                         </div>
 
                         <div>
@@ -298,47 +321,56 @@ export default function CreateVehiclePage() {
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Plat Nomor
                             </label>
-                            <input
-                                type="text"
-                                name="license_plate"
-                                value={formData.license_plate}
-                                onChange={handleChange}
-                                placeholder="Contoh: D 1234 ABC"
-                                required
-                                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 px-4 text-sm uppercase text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            />
+                            <div className="relative rounded-lg shadow-xs">
+                                <Hash className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    name="license_plate"
+                                    value={formData.license_plate}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: D 1234 ABC"
+                                    required
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-10 text-sm uppercase text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                />
+                            </div>
                         </div>
 
                         <div>
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Harga / Hari
                             </label>
-                            <input
-                                type="number"
-                                name="price_per_day"
-                                value={formData.price_per_day}
-                                onChange={handleChange}
-                                placeholder="Contoh: 350000"
-                                min="0"
-                                required
-                                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            />
+                            <div className="relative rounded-lg shadow-xs">
+                                <Banknote className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <input
+                                    type="number"
+                                    name="price_per_day"
+                                    value={formData.price_per_day}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: 350000"
+                                    min="0"
+                                    required
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-10 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                />
+                            </div>
                         </div>
 
                         <div>
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Stok
                             </label>
-                            <input
-                                type="number"
-                                name="stock"
-                                value={formData.stock}
-                                onChange={handleChange}
-                                placeholder="Contoh: 5"
-                                min="1"
-                                required
-                                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            />
+                            <div className="relative rounded-lg shadow-xs">
+                                <Package className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <input
+                                    type="number"
+                                    name="stock"
+                                    value={formData.stock}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: 5"
+                                    min="1"
+                                    required
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-4 pl-10 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                />
+                            </div>
                             <p className="mt-1 text-xs text-gray-500">
                                 Jumlah unit kendaraan yang tersedia.
                             </p>
@@ -348,16 +380,19 @@ export default function CreateVehiclePage() {
                             <label className="mb-2 block text-xs font-semibold tracking-wider text-gray-600 uppercase">
                                 Status
                             </label>
-                            <select
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            >
-                                <option value="available">Tersedia</option>
-                                <option value="rented">Disewa</option>
-                                <option value="maintenance">Dalam Perawatan</option>
-                            </select>
+                            <div className="relative rounded-lg shadow-xs">
+                                <CircleCheck className="pointer-events-none absolute inset-y-0 left-3.5 my-auto h-4 w-4 text-gray-400" />
+                                <select
+                                    name="status"
+                                    value={formData.status}
+                                    onChange={handleChange}
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-8 pl-10 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                >
+                                    <option value="available">Tersedia</option>
+                                    <option value="rented">Disewa</option>
+                                    <option value="maintenance">Dalam Perawatan</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="md:col-span-2">
@@ -381,13 +416,16 @@ export default function CreateVehiclePage() {
                                 </div>
                             )}
 
-                            <input
-                                type="file"
-                                name="image"
-                                accept="image/*"
-                                onChange={handleImageChange}
-                                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                            />
+                            <div className="relative rounded-lg shadow-xs">
+                                <ImagePlus className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
+                                <input
+                                    type="file"
+                                    name="image"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
+                                />
+                            </div>
 
                             <p className="mt-1 text-xs text-gray-500">
                                 Format JPG, JPEG, PNG.
