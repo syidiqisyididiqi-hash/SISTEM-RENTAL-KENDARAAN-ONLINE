@@ -37,7 +37,10 @@ const getAllBookings = async () => {
     return rows;
 };
 
-const getBookingById = async (id) => {
+const getBookingById = async (id, userId) => {
+    const ownerFilter = userId ? 'AND b.user_id = ?' : '';
+    const params = userId ? [id, userId] : [id];
+
     const [rows] = await pool.query(`
         SELECT
             b.id,
@@ -48,6 +51,7 @@ const getBookingById = async (id) => {
             v.name AS vehicle_name,
             v.brand,
             v.model,
+            v.image AS vehicle_image,
             v.license_plate,
             b.start_date,
             b.end_date,
@@ -56,13 +60,16 @@ const getBookingById = async (id) => {
             b.total_price,
             b.status,
             b.notes,
+            (SELECT p.status FROM payments p WHERE p.booking_id = b.id ORDER BY p.created_at DESC LIMIT 1) AS payment_status,
+            (SELECT p.payment_method FROM payments p WHERE p.booking_id = b.id ORDER BY p.created_at DESC LIMIT 1) AS payment_method,
+            (SELECT p.payment_proof FROM payments p WHERE p.booking_id = b.id ORDER BY p.created_at DESC LIMIT 1) AS payment_proof,
             b.created_at,
             b.updated_at
         FROM bookings b
         JOIN users u ON b.user_id = u.id
         JOIN vehicles v ON b.vehicle_id = v.id
-        WHERE b.id = ?
-    `, [id]);
+        WHERE b.id = ? ${ownerFilter}
+    `, params);
 
     return rows[0];
 };
@@ -76,6 +83,7 @@ const getBookingsByUser = async (userId) => {
             v.name AS vehicle_name,
             v.brand,
             v.model,
+            v.image AS vehicle_image,
             v.license_plate,
             b.start_date,
             b.end_date,
@@ -84,6 +92,8 @@ const getBookingsByUser = async (userId) => {
             b.total_price,
             b.status,
             b.notes,
+            (SELECT p.status FROM payments p WHERE p.booking_id = b.id ORDER BY p.created_at DESC LIMIT 1) AS payment_status,
+            (SELECT p.payment_method FROM payments p WHERE p.booking_id = b.id ORDER BY p.created_at DESC LIMIT 1) AS payment_method,
             b.created_at,
             b.updated_at
         FROM bookings b
@@ -384,10 +394,59 @@ const deleteBooking = async (id) => {
     }
 };
 
+const cancelUserBooking = async (id, userId) => {
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const [rows] = await connection.query(`
+            SELECT id, vehicle_id, status
+            FROM bookings
+            WHERE id = ? AND user_id = ?
+            FOR UPDATE
+        `, [id, userId]);
+
+        if (rows.length === 0) {
+            const error = new Error('Booking tidak ditemukan');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const booking = rows[0];
+
+        if (booking.status !== 'pending') {
+            const error = new Error('Hanya booking berstatus menunggu yang dapat dibatalkan');
+            error.statusCode = 409;
+            throw error;
+        }
+
+        await connection.query(
+            `UPDATE bookings SET status = 'cancelled' WHERE id = ?`,
+            [id]
+        );
+
+        await connection.query(
+            `UPDATE vehicles SET stock = stock + 1 WHERE id = ?`,
+            [booking.vehicle_id]
+        );
+
+        await connection.commit();
+
+        return getBookingById(id, userId);
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+};
+
 module.exports = {
     getAllBookings,
     getBookingById,
     getBookingsByUser,
+    cancelUserBooking,
     createBooking,
     updateBooking,
     updateBookingStatus,

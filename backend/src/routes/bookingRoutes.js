@@ -4,6 +4,9 @@ const {
     getAllBookings,
     getBookingById,
     getBookingsByUser,
+    getMyBookings,
+    getMyBookingById,
+    cancelMyBooking,
     createBooking,
     updateBooking,
     updateBookingStatus,
@@ -12,8 +15,13 @@ const {
 
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
+const userMiddleware = require('../middleware/userMiddleware');
 
 const router = express.Router();
+
+router.get('/mine', authMiddleware, userMiddleware, getMyBookings);
+router.get('/mine/:id', authMiddleware, userMiddleware, getMyBookingById);
+router.patch('/mine/:id/cancel', authMiddleware, userMiddleware, cancelMyBooking);
 
 router.get(
     '/',

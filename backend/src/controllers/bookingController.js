@@ -63,6 +63,70 @@ const getBookingsByUser = async (req, res) => {
     }
 };
 
+const getMyBookings = async (req, res) => {
+    try {
+        const bookings = await bookingService.getBookingsByUser(req.user.id);
+
+        res.json({
+            success: true,
+            message: 'Data booking berhasil diambil',
+            data: bookings
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data booking'
+        });
+    }
+};
+
+const getMyBookingById = async (req, res) => {
+    try {
+        const booking = await bookingService.getBookingById(
+            req.params.id,
+            req.user.id
+        );
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking tidak ditemukan'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Detail booking berhasil diambil',
+            data: booking
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil detail booking'
+        });
+    }
+};
+
+const cancelMyBooking = async (req, res) => {
+    try {
+        const booking = await bookingService.cancelUserBooking(
+            req.params.id,
+            req.user.id
+        );
+
+        res.json({
+            success: true,
+            message: 'Booking berhasil dibatalkan',
+            data: booking
+        });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || 'Gagal membatalkan booking'
+        });
+    }
+};
+
 const createBooking = async (req, res) => {
     try {
         const booking = await bookingService.createBooking(req.body);
@@ -147,6 +211,9 @@ module.exports = {
     getAllBookings,
     getBookingById,
     getBookingsByUser,
+    getMyBookings,
+    getMyBookingById,
+    cancelMyBooking,
     createBooking,
     updateBooking,
     updateBookingStatus,
