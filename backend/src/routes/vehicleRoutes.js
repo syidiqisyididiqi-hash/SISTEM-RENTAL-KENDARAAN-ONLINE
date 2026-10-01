@@ -1,6 +1,6 @@
-const express = require('express');
+const express = require("express");
 
-const upload = require('../middleware/uploadMiddleware');
+const upload = require("../middleware/uploadMiddleware");
 
 const {
     getAllVehicles,
@@ -8,53 +8,38 @@ const {
     getVehicleById,
     createVehicle,
     updateVehicle,
-    deleteVehicle
-} = require('../controllers/vehicleController');
+    deleteVehicle,
+} = require("../controllers/vehicleController");
 
-const authMiddleware = require('../middleware/authMiddleware');
-const adminMiddleware = require('../middleware/adminMiddleware');
+const authMiddleware = require("../middleware/authMiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
-router.get(
-    '/',
-    authMiddleware,
-    adminMiddleware,
-    getAllVehicles
-);
+router.get("/", getAllVehicles);
 
-router.get(
-    '/available',
-    authMiddleware,
-    adminMiddleware,
-    getAvailableVehicles
-);
+router.get("/available", getAvailableVehicles);
 
-router.get(
-    '/:id',
-    authMiddleware,
-    adminMiddleware,
-    getVehicleById
-);
+router.get("/:id", getVehicleById);
 
 router.post(
-    '/',
+    "/",
     authMiddleware,
     adminMiddleware,
-    upload.single('image'),
+    upload.single("image"),
     createVehicle
 );
 
 router.put(
-    '/:id',
+    "/:id",
     authMiddleware,
     adminMiddleware,
-    upload.single('image'),
+    upload.single("image"),
     updateVehicle
 );
 
 router.delete(
-    '/:id',
+    "/:id",
     authMiddleware,
     adminMiddleware,
     deleteVehicle
