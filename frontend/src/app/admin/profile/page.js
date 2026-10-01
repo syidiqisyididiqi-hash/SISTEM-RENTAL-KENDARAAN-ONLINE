@@ -30,18 +30,18 @@ export default function ProfilePage() {
 
             if (profileData) {
                 setUser(profileData);
-                localStorage.setItem("user", JSON.stringify(profileData));
+                sessionStorage.setItem("user", JSON.stringify(profileData));
                 return;
             }
 
-            const storedUser = localStorage.getItem("user");
+            const storedUser = sessionStorage.getItem("user");
             if (storedUser) {
                 setUser(JSON.parse(storedUser));
             }
         } catch (err) {
             console.error(err);
 
-            const storedUser = localStorage.getItem("user");
+            const storedUser = sessionStorage.getItem("user");
             if (storedUser) {
                 try {
                     setUser(JSON.parse(storedUser));

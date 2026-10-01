@@ -138,7 +138,7 @@ export default function EditProfilePage() {
                     role: updatedUser.role || "user",
                 });
 
-                localStorage.setItem(
+                sessionStorage.setItem(
                     "user",
                     JSON.stringify(updatedUser)
                 );
