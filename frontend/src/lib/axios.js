@@ -24,14 +24,18 @@ api.interceptors.response.use(
         return response;
     },
     (error) => {
-        if (error.response?.status === 401) {
+        const status = error.response?.status;
+        const hadAuthorization =
+            Boolean(error.config?.headers?.Authorization);
+
+        if (status === 401 && hadAuthorization) {
             sessionStorage.removeItem("token");
             sessionStorage.removeItem("user");
 
             window.dispatchEvent(new Event("auth-change"));
         }
 
-        if (error.response?.status === 403) {
+        if (status === 403) {
             window.dispatchEvent(new Event("auth-forbidden"));
         }
 
