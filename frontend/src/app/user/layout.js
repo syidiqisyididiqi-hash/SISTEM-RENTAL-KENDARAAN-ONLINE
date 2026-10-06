@@ -1,81 +1,93 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import UserFooter from "@/components/user/UserFooter";
 import UserAuthNavbar from "@/components/user/UserAuthNavbar";
 
-const subscribeToAuth = (onChange) => {
-    window.addEventListener("storage", onChange);
-    window.addEventListener("auth-change", onChange);
-
-    return () => {
-        window.removeEventListener("storage", onChange);
-        window.removeEventListener("auth-change", onChange);
-    };
-};
-
-const getSessionValue = (key) => {
-    if (typeof window === "undefined") {
-        return null;
-    }
-
-    return sessionStorage.getItem(key);
-};
-
 export default function UserLayout({ children }) {
     const router = useRouter();
     const pathname = usePathname();
+
+    const [token, setToken] = useState(null);
+    const [user, setUser] = useState(null);
+    const [authChecked, setAuthChecked] = useState(false);
+
     const isPublicRoute =
         pathname === "/user/vehicles" ||
         pathname.startsWith("/user/vehicles/");
-    const token = useSyncExternalStore(
-        subscribeToAuth,
-        () => getSessionValue("token"),
-        () => null
-    );
-    const storedUser = useSyncExternalStore(
-        subscribeToAuth,
-        () => getSessionValue("user"),
-        () => null
-    );
-
-    let user = null;
-
-    if (storedUser) {
-        try {
-            user = JSON.parse(storedUser);
-        } catch {
-            user = null;
-        }
-    }
-
-    const authorized = Boolean(token && user?.role === "user");
 
     useEffect(() => {
-        if (isPublicRoute) {
+        const readAuth = () => {
+            const storedToken = sessionStorage.getItem("token");
+            const storedUser = sessionStorage.getItem("user");
+
+            setToken(storedToken);
+
+            if (storedUser) {
+                try {
+                    setUser(JSON.parse(storedUser));
+                } catch {
+                    setUser(null);
+                }
+            } else {
+                setUser(null);
+            }
+
+            setAuthChecked(true);
+        };
+
+        readAuth();
+
+        window.addEventListener("auth-change", readAuth);
+
+        return () => {
+            window.removeEventListener("auth-change", readAuth);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!authChecked || isPublicRoute) {
             return;
         }
 
-        if (!token || !storedUser || !user) {
-            const returnTo = `${pathname}${window.location.search}`;
+        if (!token || user?.role?.toLowerCase() !== "user") {
+            const returnTo =
+                `${pathname}${window.location.search}`;
+
             router.replace(
                 `/login?message=login-required&returnTo=${encodeURIComponent(returnTo)}`
             );
-            return;
         }
+    }, [
+        authChecked,
+        isPublicRoute,
+        pathname,
+        router,
+        token,
+        user,
+    ]);
 
-        if (user.role !== "user") {
-            router.replace("/admin/dashboard");
-        }
-    }, [isPublicRoute, pathname, router, storedUser, token, user]);
-
-    if (!isPublicRoute && !authorized) {
+    if (!authChecked && !isPublicRoute) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-slate-50">
                 <p className="text-sm text-slate-500">
                     Memeriksa autentikasi...
+                </p>
+            </div>
+        );
+    }
+
+    if (
+        authChecked &&
+        !isPublicRoute &&
+        (!token || user?.role?.toLowerCase() !== "user")
+    ) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-slate-50">
+                <p className="text-sm text-slate-500">
+                    Mengarahkan ke halaman login...
                 </p>
             </div>
         );
