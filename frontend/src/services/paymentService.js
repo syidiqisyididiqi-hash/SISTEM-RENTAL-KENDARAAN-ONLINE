@@ -11,6 +11,9 @@ const paymentService = {
     create: (data) =>
         api.post("/payments", data),
 
+    submitProof: (data) =>
+        api.post("/payments/mine/proof", data),
+
     update: (id, data) =>
         api.put(`/payments/${id}`, data),
 

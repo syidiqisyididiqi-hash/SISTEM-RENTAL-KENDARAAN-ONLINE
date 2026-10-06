@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const pool = require("../config/database");
 
 const getAllPayments = async () => {
     const [rows] = await pool.query(`
@@ -6,7 +6,6 @@ const getAllPayments = async () => {
             p.id,
             p.booking_id,
             p.payment_method,
-            p.payment_proof,
             p.amount,
             p.status,
             p.verified_at,
@@ -20,12 +19,12 @@ const getAllPayments = async () => {
 };
 
 const getPaymentById = async (id) => {
-    const [rows] = await pool.query(`
+    const [rows] = await pool.query(
+        `
         SELECT
             p.id,
             p.booking_id,
             p.payment_method,
-            p.payment_proof,
             p.amount,
             p.status,
             p.verified_at,
@@ -33,18 +32,20 @@ const getPaymentById = async (id) => {
             p.updated_at
         FROM payments p
         WHERE p.id = ?
-    `, [id]);
+        `,
+        [id]
+    );
 
     return rows[0];
 };
 
 const getPaymentByBookingId = async (bookingId) => {
-    const [rows] = await pool.query(`
+    const [rows] = await pool.query(
+        `
         SELECT
             p.id,
             p.booking_id,
             p.payment_method,
-            p.payment_proof,
             p.amount,
             p.status,
             p.verified_at,
@@ -53,7 +54,9 @@ const getPaymentByBookingId = async (bookingId) => {
         FROM payments p
         WHERE p.booking_id = ?
         ORDER BY p.created_at DESC
-    `, [bookingId]);
+        `,
+        [bookingId]
+    );
 
     return rows;
 };
@@ -62,55 +65,142 @@ const createPayment = async (data) => {
     const {
         booking_id,
         payment_method,
-        payment_proof,
-        amount
+        amount,
     } = data;
 
-    const [result] = await pool.query(`
+    const [result] = await pool.query(
+        `
         INSERT INTO payments (
             booking_id,
             payment_method,
-            payment_proof,
             amount
         )
-        VALUES (?, ?, ?, ?)
-    `, [
-        booking_id,
-        payment_method,
-        payment_proof || null,
-        amount
-    ]);
+        VALUES (?, ?, ?)
+        `,
+        [
+            booking_id,
+            payment_method,
+            amount,
+        ]
+    );
 
     return getPaymentById(result.insertId);
+};
+
+const submitPaymentProof = async ({
+    booking_id,
+    user_id,
+    payment_method,
+    payment_proof,
+}) => {
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const [rows] = await connection.query(
+            `
+            SELECT
+                p.id,
+                p.status AS payment_status,
+                b.total_price,
+                b.status AS booking_status
+            FROM payments p
+            JOIN bookings b ON b.id = p.booking_id
+            WHERE p.booking_id = ?
+                AND b.user_id = ?
+            ORDER BY p.created_at DESC
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [booking_id, user_id]
+        );
+
+        if (rows.length === 0) {
+            const error = new Error("Booking tidak ditemukan.");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const payment = rows[0];
+
+        if (
+            ["cancelled", "completed", "rejected"].includes(
+                payment.booking_status
+            )
+        ) {
+            const error = new Error(
+                "Booking ini tidak dapat menerima pembayaran."
+            );
+            error.statusCode = 409;
+            throw error;
+        }
+
+        if (payment.payment_status === "paid") {
+            const error = new Error(
+                "Pembayaran booking ini sudah dikonfirmasi."
+            );
+            error.statusCode = 409;
+            throw error;
+        }
+
+        await connection.query(
+            `
+            UPDATE payments
+            SET
+                payment_method = ?,
+                payment_proof = ?,
+                amount = ?,
+                status = 'pending',
+                verified_at = NULL
+            WHERE id = ?
+            `,
+            [
+                payment_method,
+                payment_proof,
+                payment.total_price,
+                payment.id,
+            ]
+        );
+
+        await connection.commit();
+
+        return getPaymentById(payment.id);
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 const updatePayment = async (id, data) => {
     const {
         payment_method,
-        payment_proof,
-        amount
+        amount,
     } = data;
 
-    await pool.query(`
+    await pool.query(
+        `
         UPDATE payments
         SET
             payment_method = ?,
-            payment_proof = ?,
             amount = ?
         WHERE id = ?
-    `, [
-        payment_method,
-        payment_proof || null,
-        amount,
-        id
-    ]);
+        `,
+        [
+            payment_method,
+            amount,
+            id,
+        ]
+    );
 
     return getPaymentById(id);
 };
 
 const updatePaymentStatus = async (id, status) => {
-    if (!['pending', 'paid', 'rejected'].includes(status)) {
-        throw new Error('Status pembayaran tidak valid.');
+    if (!["pending", "paid", "rejected"].includes(status)) {
+        throw new Error("Status pembayaran tidak valid.");
     }
 
     const connection = await pool.getConnection();
@@ -118,7 +208,8 @@ const updatePaymentStatus = async (id, status) => {
     try {
         await connection.beginTransaction();
 
-        const [paymentRows] = await connection.query(`
+        const [paymentRows] = await connection.query(
+            `
             SELECT
                 p.id,
                 p.booking_id,
@@ -129,75 +220,100 @@ const updatePaymentStatus = async (id, status) => {
             JOIN bookings b ON p.booking_id = b.id
             WHERE p.id = ?
             FOR UPDATE
-        `, [id]);
+            `,
+            [id]
+        );
 
         if (paymentRows.length === 0) {
             throw new Error(
-                'Pembayaran atau booking tidak ditemukan.'
+                "Pembayaran atau booking tidak ditemukan."
             );
         }
 
         const payment = paymentRows[0];
 
-        if (status === 'paid') {
-            await connection.query(`
+        if (status === "paid") {
+            await connection.query(
+                `
                 UPDATE payments
                 SET
                     status = ?,
                     verified_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            `, [status, id]);
+                `,
+                [status, id]
+            );
 
-            await connection.query(`
+            await connection.query(
+                `
                 UPDATE bookings
-                SET status = 'confirmed'
+                SET status = "confirmed"
                 WHERE id = ?
-            `, [payment.booking_id]);
+                `,
+                [payment.booking_id]
+            );
         }
 
-        if (status === 'rejected') {
-            await connection.query(`
+        if (status === "rejected") {
+            await connection.query(
+                `
                 UPDATE payments
                 SET
                     status = ?,
                     verified_at = NULL
                 WHERE id = ?
-            `, [status, id]);
+                `,
+                [status, id]
+            );
 
             const shouldRestoreStock =
-                !['cancelled', 'rejected', 'completed'].includes(
-                    payment.booking_status
-                );
+                ![
+                    "cancelled",
+                    "rejected",
+                    "completed",
+                ].includes(payment.booking_status);
 
             if (shouldRestoreStock) {
-                await connection.query(`
+                await connection.query(
+                    `
                     UPDATE vehicles
                     SET stock = stock + 1
                     WHERE id = ?
-                `, [payment.vehicle_id]);
+                    `,
+                    [payment.vehicle_id]
+                );
             }
 
-            await connection.query(`
+            await connection.query(
+                `
                 UPDATE bookings
-                SET status = 'rejected'
+                SET status = "rejected"
                 WHERE id = ?
-            `, [payment.booking_id]);
+                `,
+                [payment.booking_id]
+            );
         }
 
-        if (status === 'pending') {
-            await connection.query(`
+        if (status === "pending") {
+            await connection.query(
+                `
                 UPDATE payments
                 SET
                     status = ?,
                     verified_at = NULL
                 WHERE id = ?
-            `, [status, id]);
+                `,
+                [status, id]
+            );
 
-            await connection.query(`
+            await connection.query(
+                `
                 UPDATE bookings
-                SET status = 'pending'
+                SET status = "pending"
                 WHERE id = ?
-            `, [payment.booking_id]);
+                `,
+                [payment.booking_id]
+            );
         }
 
         await connection.commit();
@@ -212,10 +328,13 @@ const updatePaymentStatus = async (id, status) => {
 };
 
 const deletePayment = async (id) => {
-    const [result] = await pool.query(`
+    const [result] = await pool.query(
+        `
         DELETE FROM payments
         WHERE id = ?
-    `, [id]);
+        `,
+        [id]
+    );
 
     return result.affectedRows > 0;
 };
@@ -225,7 +344,8 @@ module.exports = {
     getPaymentById,
     getPaymentByBookingId,
     createPayment,
+    submitPaymentProof,
     updatePayment,
     updatePaymentStatus,
-    deletePayment
+    deletePayment,
 };

@@ -22,7 +22,7 @@ const getUserSnapshot = () => {
         return null;
     }
 
-    return localStorage.getItem("user");
+    return sessionStorage.getItem("user");
 };
 
 export default function AdminNavbar({ onMenuClick }) {
@@ -64,8 +64,8 @@ export default function AdminNavbar({ onMenuClick }) {
     const handleConfirmLogout = () => {
         setShowLogoutConfirm(false);
 
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
 
         router.push("/login");
     };

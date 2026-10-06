@@ -73,7 +73,7 @@ export default function EditProfilePage() {
 
       const updatedUser = response.data.data;
 
-      localStorage.setItem(
+      sessionStorage.setItem(
         "user",
         JSON.stringify(updatedUser)
       );

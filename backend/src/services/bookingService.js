@@ -119,27 +119,15 @@ const createBooking = async (data) => {
         throw new Error('Status booking tidak valid');
     }
 
-    const [users] = await pool.query(
+        const [users] = await pool.query(
         `SELECT id
-         FROM users
-         WHERE id = ? AND role = 'user'`,
+        FROM users
+        WHERE id = ? AND role = 'user'`,
         [user_id]
     );
 
     if (users.length === 0) {
         throw new Error('Customer tidak ditemukan');
-    }
-
-    const [vehicles] = await pool.query(
-        `SELECT id, price_per_day, stock, status
-        FROM vehicles
-        WHERE id = ?
-        FOR UPDATE`,
-        [vehicle_id]
-    );
-
-    if (vehicles.length === 0) {
-        throw new Error('Kendaraan tidak ditemukan');
     }
 
     const connection = await pool.getConnection();

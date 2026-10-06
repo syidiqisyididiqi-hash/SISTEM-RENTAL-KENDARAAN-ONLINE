@@ -5,6 +5,7 @@ const {
     getPaymentById,
     getPaymentByBookingId,
     createPayment,
+    submitPaymentProof,
     updatePayment,
     updatePaymentStatus,
     deletePayment
@@ -12,8 +13,35 @@ const {
 
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
+const userMiddleware = require('../middleware/userMiddleware');
+const uploadPaymentProof = require('../middleware/uploadPaymentProof');
 
 const router = express.Router();
+
+const handlePaymentProofUpload = (req, res, next) => {
+    uploadPaymentProof.single('payment_proof')(
+        req,
+        res,
+        (error) => {
+            if (error) {
+                const statusCode =
+                    error.code === 'LIMIT_FILE_SIZE'
+                        ? 413
+                        : 400;
+
+                return res.status(statusCode).json({
+                    success: false,
+                    message:
+                        error.code === 'LIMIT_FILE_SIZE'
+                            ? 'Ukuran bukti pembayaran maksimal 5 MB.'
+                            : error.message,
+                });
+            }
+
+            next();
+        }
+    );
+};
 
 router.get(
     '/',
@@ -25,7 +53,6 @@ router.get(
 router.get(
     '/booking/:bookingId',
     authMiddleware,
-    adminMiddleware,
     getPaymentByBookingId
 );
 
@@ -37,9 +64,16 @@ router.get(
 );
 
 router.post(
+    '/mine/proof',
+    authMiddleware,
+    userMiddleware,
+    handlePaymentProofUpload,
+    submitPaymentProof
+);
+
+router.post(
     '/',
     authMiddleware,
-    adminMiddleware,
     createPayment
 );
 

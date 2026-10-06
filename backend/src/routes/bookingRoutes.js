@@ -19,9 +19,33 @@ const userMiddleware = require('../middleware/userMiddleware');
 
 const router = express.Router();
 
-router.get('/mine', authMiddleware, userMiddleware, getMyBookings);
-router.get('/mine/:id', authMiddleware, userMiddleware, getMyBookingById);
-router.patch('/mine/:id/cancel', authMiddleware, userMiddleware, cancelMyBooking);
+router.get(
+    '/mine',
+    authMiddleware,
+    userMiddleware,
+    getMyBookings
+);
+
+router.get(
+    '/mine/:id',
+    authMiddleware,
+    userMiddleware,
+    getMyBookingById
+);
+
+router.patch(
+    '/mine/:id/cancel',
+    authMiddleware,
+    userMiddleware,
+    cancelMyBooking
+);
+
+router.post(
+    '/',
+    authMiddleware,
+    userMiddleware,
+    createBooking
+);
 
 router.get(
     '/',
@@ -42,13 +66,6 @@ router.get(
     authMiddleware,
     adminMiddleware,
     getBookingById
-);
-
-router.post(
-    '/',
-    authMiddleware,
-    adminMiddleware,
-    createBooking
 );
 
 router.put(

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import UserNavbar from "@/components/user/UserNavbar";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const subscribeToAuth = (onChange) => {
   const handleChange = () => onChange();
@@ -31,7 +32,7 @@ const getTokenSnapshot = () => {
     return null;
   }
 
-  return localStorage.getItem("token");
+  return sessionStorage.getItem("token");
 };
 
 const getUserSnapshot = () => {
@@ -39,7 +40,7 @@ const getUserSnapshot = () => {
     return null;
   }
 
-  return localStorage.getItem("user");
+  return sessionStorage.getItem("user");
 };
 
 const protectedRoutes = [
@@ -53,6 +54,7 @@ export default function UserAuthNavbar() {
   const pathname = usePathname();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const token = useSyncExternalStore(
     subscribeToAuth,
@@ -87,19 +89,26 @@ export default function UserAuthNavbar() {
 
   useEffect(() => {
     if (!token && requiresAuth) {
-      router.replace("/login");
+      const returnTo = `${pathname}${window.location.search}`;
+      router.replace(
+        `/login?message=login-required&returnTo=${encodeURIComponent(returnTo)}`
+      );
     }
-  }, [token, requiresAuth, router]);
+  }, [token, pathname, requiresAuth, router]);
 
   if (!token || !isUserSession) {
     return requiresAuth ? null : <UserNavbar />;
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
+  const handleLogoutClick = () => {
     setIsOpen(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false);
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
 
     window.dispatchEvent(new Event("auth-change"));
 
@@ -107,7 +116,8 @@ export default function UserAuthNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
+    <>
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
         <Link
@@ -167,7 +177,7 @@ export default function UserAuthNavbar() {
 
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className="ml-1 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
           >
             <LogOut className="h-4 w-4" />
@@ -240,7 +250,7 @@ export default function UserAuthNavbar() {
 
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50"
             >
               <LogOut className="h-5 w-5" />
@@ -250,6 +260,18 @@ export default function UserAuthNavbar() {
           </nav>
         </div>
       )}
-    </header>
+      </header>
+
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={handleConfirmLogout}
+        title="Konfirmasi Logout"
+        description="Apakah Anda yakin ingin keluar dari akun?"
+        confirmText="Logout"
+        cancelText="Batal"
+        type="danger"
+      />
+    </>
   );
 }

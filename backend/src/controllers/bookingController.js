@@ -100,9 +100,12 @@ const getMyBookingById = async (req, res) => {
             data: booking
         });
     } catch (error) {
+        console.error('getMyBookingById error:', error);
+
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil detail booking'
+            message: 'Gagal mengambil detail booking',
+            error: error.message
         });
     }
 };
@@ -129,7 +132,10 @@ const cancelMyBooking = async (req, res) => {
 
 const createBooking = async (req, res) => {
     try {
-        const booking = await bookingService.createBooking(req.body);
+        const booking = await bookingService.createBooking({
+            ...req.body,
+            user_id: req.user.id
+        });
 
         res.status(201).json({
             success: true,
@@ -137,6 +143,8 @@ const createBooking = async (req, res) => {
             data: booking
         });
     } catch (error) {
+        console.error('createBooking error:', error);
+
         res.status(400).json({
             success: false,
             message: error.message

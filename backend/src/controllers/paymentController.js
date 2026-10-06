@@ -1,4 +1,6 @@
-const paymentService = require('../services/paymentService');
+const paymentService = require("../services/paymentService");
+
+const allowedPaymentMethods = ["qris", "cash", "bank_transfer"];
 
 const getAllPayments = async (req, res) => {
     try {
@@ -6,15 +8,15 @@ const getAllPayments = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Data pembayaran berhasil diambil',
-            data: payments
+            message: "Data pembayaran berhasil diambil",
+            data: payments,
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil data pembayaran'
+            message: "Gagal mengambil data pembayaran",
         });
     }
 };
@@ -28,21 +30,21 @@ const getPaymentById = async (req, res) => {
         if (!payment) {
             return res.status(404).json({
                 success: false,
-                message: 'Pembayaran tidak ditemukan'
+                message: "Pembayaran tidak ditemukan",
             });
         }
 
         res.status(200).json({
             success: true,
-            message: 'Data pembayaran berhasil diambil',
-            data: payment
+            message: "Data pembayaran berhasil diambil",
+            data: payment,
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil data pembayaran'
+            message: "Gagal mengambil data pembayaran",
         });
     }
 };
@@ -51,19 +53,20 @@ const getPaymentByBookingId = async (req, res) => {
     try {
         const { bookingId } = req.params;
 
-        const payments = await paymentService.getPaymentByBookingId(bookingId);
+        const payments =
+            await paymentService.getPaymentByBookingId(bookingId);
 
         res.status(200).json({
             success: true,
-            message: 'Data pembayaran booking berhasil diambil',
-            data: payments
+            message: "Data pembayaran booking berhasil diambil",
+            data: payments,
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil data pembayaran booking'
+            message: "Gagal mengambil data pembayaran booking",
         });
     }
 };
@@ -73,42 +76,89 @@ const createPayment = async (req, res) => {
         const {
             booking_id,
             payment_method,
-            payment_proof,
-            amount
+            amount,
         } = req.body;
 
         if (!booking_id || !payment_method || !amount) {
             return res.status(400).json({
                 success: false,
-                message: 'booking_id, payment_method, dan amount wajib diisi'
+                message:
+                    "booking_id, payment_method, dan amount wajib diisi",
             });
         }
 
-        if (!['bank_transfer', 'cash'].includes(payment_method)) {
+        if (!allowedPaymentMethods.includes(payment_method)) {
             return res.status(400).json({
                 success: false,
-                message: 'Metode pembayaran tidak valid'
+                message: "Metode pembayaran tidak valid",
             });
         }
 
         const payment = await paymentService.createPayment({
             booking_id,
             payment_method,
-            payment_proof,
-            amount
+            amount,
         });
 
         res.status(201).json({
             success: true,
-            message: 'Pembayaran berhasil dibuat',
-            data: payment
+            message: "Pembayaran berhasil dibuat",
+            data: payment,
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: 'Gagal membuat pembayaran'
+            message: "Gagal membuat pembayaran",
+        });
+    }
+};
+
+const submitPaymentProof = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            message: "Bukti pembayaran wajib diunggah.",
+        });
+    }
+
+    try {
+        const { booking_id, payment_method } = req.body;
+
+        if (!booking_id || !payment_method) {
+            return res.status(400).json({
+                success: false,
+                message: "booking_id dan payment_method wajib diisi.",
+            });
+        }
+
+        if (!allowedPaymentMethods.includes(payment_method)) {
+            return res.status(400).json({
+                success: false,
+                message: "Metode pembayaran tidak valid.",
+            });
+        }
+
+        const payment = await paymentService.submitPaymentProof({
+            booking_id,
+            user_id: req.user.id,
+            payment_method,
+            payment_proof: `/uploads/payments/${req.file.filename}`,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Bukti pembayaran berhasil dikirim.",
+            data: payment,
+        });
+    } catch (error) {
+        console.error("Submit payment proof error:", error);
+
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message:
+                error.message || "Gagal mengirim bukti pembayaran.",
         });
     }
 };
@@ -117,52 +167,51 @@ const updatePayment = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const existingPayment = await paymentService.getPaymentById(id);
+        const existingPayment =
+            await paymentService.getPaymentById(id);
 
         if (!existingPayment) {
             return res.status(404).json({
                 success: false,
-                message: 'Pembayaran tidak ditemukan'
+                message: "Pembayaran tidak ditemukan",
             });
         }
 
         const {
             payment_method,
-            payment_proof,
-            amount
+            amount,
         } = req.body;
 
         if (!payment_method || !amount) {
             return res.status(400).json({
                 success: false,
-                message: 'payment_method dan amount wajib diisi'
+                message: "payment_method dan amount wajib diisi",
             });
         }
 
-        if (!['bank_transfer', 'cash'].includes(payment_method)) {
+        if (!allowedPaymentMethods.includes(payment_method)) {
             return res.status(400).json({
                 success: false,
-                message: 'Metode pembayaran tidak valid'
+                message: "Metode pembayaran tidak valid",
             });
         }
 
         const payment = await paymentService.updatePayment(id, {
             payment_method,
-            payment_proof,
-            amount
+            amount,
         });
 
         res.status(200).json({
             success: true,
-            message: 'Pembayaran berhasil diperbarui',
-            data: payment
+            message: "Pembayaran berhasil diperbarui",
+            data: payment,
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: 'Gagal memperbarui pembayaran'
+            message: "Gagal memperbarui pembayaran",
         });
     }
 };
@@ -172,35 +221,37 @@ const updatePaymentStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        const existingPayment = await paymentService.getPaymentById(id);
+        const existingPayment =
+            await paymentService.getPaymentById(id);
 
         if (!existingPayment) {
             return res.status(404).json({
                 success: false,
-                message: 'Pembayaran tidak ditemukan'
+                message: "Pembayaran tidak ditemukan",
             });
         }
 
-        if (!['pending', 'paid', 'rejected'].includes(status)) {
+        if (!["pending", "paid", "rejected"].includes(status)) {
             return res.status(400).json({
                 success: false,
-                message: 'Status pembayaran tidak valid'
+                message: "Status pembayaran tidak valid",
             });
         }
 
-        const payment = await paymentService.updatePaymentStatus(id, status);
+        const payment =
+            await paymentService.updatePaymentStatus(id, status);
 
         res.status(200).json({
             success: true,
-            message: 'Status pembayaran berhasil diperbarui',
-            data: payment
+            message: "Status pembayaran berhasil diperbarui",
+            data: payment,
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: 'Gagal memperbarui status pembayaran'
+            message: "Gagal memperbarui status pembayaran",
         });
     }
 };
@@ -209,12 +260,13 @@ const deletePayment = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const existingPayment = await paymentService.getPaymentById(id);
+        const existingPayment =
+            await paymentService.getPaymentById(id);
 
         if (!existingPayment) {
             return res.status(404).json({
                 success: false,
-                message: 'Pembayaran tidak ditemukan'
+                message: "Pembayaran tidak ditemukan",
             });
         }
 
@@ -222,14 +274,14 @@ const deletePayment = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Pembayaran berhasil dihapus'
+            message: "Pembayaran berhasil dihapus",
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: 'Gagal menghapus pembayaran'
+            message: "Gagal menghapus pembayaran",
         });
     }
 };
@@ -239,7 +291,8 @@ module.exports = {
     getPaymentById,
     getPaymentByBookingId,
     createPayment,
+    submitPaymentProof,
     updatePayment,
     updatePaymentStatus,
-    deletePayment
+    deletePayment,
 };

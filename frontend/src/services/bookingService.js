@@ -7,6 +7,12 @@ const bookingService = {
 
     getByUser: (userId) => api.get(`/bookings/user/${userId}`),
 
+    getMine: () => api.get("/bookings/mine"),
+
+    getMineById: (id) => api.get(`/bookings/mine/${id}`),
+
+    cancelMine: (id) => api.patch(`/bookings/mine/${id}/cancel`),
+
     create: (data) => api.post("/bookings", data),
 
     update: (id, data) => api.put(`/bookings/${id}`, data),

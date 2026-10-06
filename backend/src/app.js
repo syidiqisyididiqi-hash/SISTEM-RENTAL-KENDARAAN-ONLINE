@@ -8,6 +8,7 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const paymentSettingRoutes = require("./routes/paymentSettingRoutes");
 const adminDashboardRoutes = require("./routes/adminDashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 
@@ -16,18 +17,22 @@ const app = express();
 app.use(
     cors({
         origin: "http://localhost:3000",
-        credentials: true
+        credentials: true,
     })
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+app.use(
+    "/uploads",
+    express.static(path.join(__dirname, "../uploads"))
+);
 
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "API Rental Kendaraan berjalan"
+        message: "API Rental Kendaraan berjalan",
     });
 });
 
@@ -37,13 +42,14 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/payment-settings", paymentSettingRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/reports", reportRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
         success: false,
-        message: "Endpoint tidak ditemukan"
+        message: "Endpoint tidak ditemukan",
     });
 });
 
@@ -52,7 +58,8 @@ app.use((err, req, res, next) => {
 
     res.status(err.status || 500).json({
         success: false,
-        message: err.message || "Terjadi kesalahan pada server"
+        message:
+            err.message || "Terjadi kesalahan pada server",
     });
 });
 

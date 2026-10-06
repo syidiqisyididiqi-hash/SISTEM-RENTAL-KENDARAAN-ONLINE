@@ -1,69 +1,88 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
+import {
+  ArrowRight,
+  CarFront,
+  CalendarCheck,
+  ShieldCheck,
+} from "lucide-react";
+import UserNavbar from "@/components/user/UserNavbar";
+import UserFooter from "@/components/user/UserFooter";
 
-export default function Home() {
+export default function UserDashboard() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.js</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <UserNavbar />
+
+      <main className="flex-1">
+        <section className="bg-slate-900">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+            <div className="max-w-2xl">
+              <p className="mb-4 text-sm font-semibold uppercase tracking-wider text-blue-400">
+                Rental Kendaraan Online
+              </p>
+
+              <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                Temukan kendaraan yang sesuai dengan kebutuhanmu
+              </h1>
+
+              <p className="mt-6 text-lg leading-8 text-slate-300">
+                Pilih kendaraan, tentukan tanggal rental, dan lakukan booking
+                dengan mudah melalui sistem rental kendaraan online.
+              </p>
+
+              <div className="mt-8">
+                <Link
+                  href="/user/vehicles"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Lihat Kendaraan
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-12 sm:px-6 md:grid-cols-3 lg:px-8">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <CarFront className="h-8 w-8 text-blue-600" />
+
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">
+              Banyak Pilihan Kendaraan
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Temukan berbagai jenis kendaraan sesuai kebutuhan perjalananmu.
+            </p>
+          </div>
+
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <CalendarCheck className="h-8 w-8 text-blue-600" />
+
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">
+              Booking Mudah
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Tentukan kendaraan dan tanggal rental tanpa proses yang rumit.
+            </p>
+          </div>
+
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <ShieldCheck className="h-8 w-8 text-blue-600" />
+
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">
+              Proses Terpercaya
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Kelola booking dan pembayaran melalui satu sistem terintegrasi.
+            </p>
+          </div>
+        </section>
       </main>
+
+      <UserFooter />
     </div>
   );
 }

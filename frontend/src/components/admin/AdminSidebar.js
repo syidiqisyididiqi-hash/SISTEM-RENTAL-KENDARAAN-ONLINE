@@ -36,7 +36,7 @@ const getUserSnapshot = () => {
         return null;
     }
 
-    return localStorage.getItem("user");
+    return sessionStorage.getItem("user");
 };
 
 const menus = [
@@ -46,6 +46,7 @@ const menus = [
     { name: "Kendaraan", href: "/admin/vehicles", icon: CarFront },
     { name: "Pemesanan", href: "/admin/bookings", icon: CalendarCheck },
     { name: "Pembayaran", href: "/admin/payments", icon: CreditCard },
+    { name: "Pengaturan Pembayaran", href: "/admin/payment-settings", icon: CreditCard },
     { name: "Laporan", href: "/admin/reports", icon: FileText },
 ];
 
@@ -73,8 +74,8 @@ export default function AdminSidebar({ isOpen, onClose }) {
     const userEmail = user?.email || "Admin";
 
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
         router.push("/login");
     };
 

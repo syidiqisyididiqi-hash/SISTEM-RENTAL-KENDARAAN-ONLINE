@@ -16,10 +16,8 @@ export default function CreatePaymentPage() {
 
     const [formData, setFormData] = useState({
         booking_id: "",
-        payment_method: "bank_transfer",
+        payment_method: "qris",
         amount: "",
-        payment_proof: "",
-        status: "pending",
     });
 
     const [loading, setLoading] = useState(false);
@@ -124,11 +122,6 @@ export default function CreatePaymentPage() {
             return;
         }
 
-        if (!formData.status) {
-            setError("Status pembayaran wajib dipilih.");
-            return;
-        }
-
         setShowSaveDialog(true);
     };
 
@@ -141,11 +134,7 @@ export default function CreatePaymentPage() {
                 booking_id: Number(formData.booking_id),
                 payment_method: formData.payment_method,
                 amount: Number(formData.amount),
-                payment_proof:
-                    formData.payment_proof || null,
-                status: formData.status,
             });
-
             setShowSaveDialog(false);
 
             setToast({
@@ -330,8 +319,8 @@ export default function CreatePaymentPage() {
                                                 required
                                                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
                                             >
-                                                <option value="bank_transfer">
-                                                    Bank Transfer
+                                                <option value="qris">
+                                                    QRIS
                                                 </option>
                                                 <option value="cash">
                                                     Cash
@@ -491,19 +480,9 @@ export default function CreatePaymentPage() {
                                         Metode
                                     </span>
                                     <span className="inline-flex items-center rounded-md bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
-                                        {formData.payment_method ===
-                                        "bank_transfer"
-                                            ? "Bank Transfer"
+                                        {formData.payment_method === "qris"
+                                            ? "QRIS"
                                             : "Cash"}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">
-                                        Status
-                                    </span>
-                                    <span className="font-medium capitalize text-gray-800">
-                                        {formData.status}
                                     </span>
                                 </div>
 

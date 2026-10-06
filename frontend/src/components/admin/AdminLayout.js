@@ -13,8 +13,8 @@ export default function AdminLayout({ children }) {
 
     useEffect(() => {
         const checkAuth = () => {
-            const token = localStorage.getItem("token");
-            const storedUser = localStorage.getItem("user");
+            const token = sessionStorage.getItem("token");
+            const storedUser = sessionStorage.getItem("user");
 
             if (!token || !storedUser) {
                 setAuthorized(false);
@@ -33,8 +33,8 @@ export default function AdminLayout({ children }) {
 
                 setAuthorized(true);
             } catch (error) {
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
+                sessionStorage.removeItem("token");
+                sessionStorage.removeItem("user");
 
                 setAuthorized(false);
                 router.replace("/login");

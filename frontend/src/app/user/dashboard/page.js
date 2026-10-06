@@ -1,12 +1,18 @@
 import Link from "next/link";
-import { ArrowRight, CarFront, CalendarCheck, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  CarFront,
+  CalendarCheck,
+  ShieldCheck,
+} from "lucide-react";
 
 export default function UserDashboard() {
   return (
-    <div>
+    <main className="flex-1 bg-slate-50">
+      {/* Hero */}
       <section className="bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
+          <div className="max-w-3xl">
             <p className="mb-4 text-sm font-semibold uppercase tracking-wider text-blue-400">
               Rental Kendaraan Online
             </p>
@@ -15,7 +21,7 @@ export default function UserDashboard() {
               Temukan kendaraan yang sesuai dengan kebutuhanmu
             </h1>
 
-            <p className="mt-6 text-lg leading-8 text-slate-300">
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
               Pilih kendaraan, tentukan tanggal rental, dan lakukan booking
               dengan mudah melalui sistem rental kendaraan online.
             </p>
@@ -33,8 +39,9 @@ export default function UserDashboard() {
         </div>
       </section>
 
+      {/* Features */}
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-12 sm:px-6 md:grid-cols-3 lg:px-8">
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
           <CarFront className="h-8 w-8 text-blue-600" />
 
           <h2 className="mt-4 text-lg font-semibold text-slate-900">
@@ -46,7 +53,7 @@ export default function UserDashboard() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
           <CalendarCheck className="h-8 w-8 text-blue-600" />
 
           <h2 className="mt-4 text-lg font-semibold text-slate-900">
@@ -58,7 +65,7 @@ export default function UserDashboard() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
           <ShieldCheck className="h-8 w-8 text-blue-600" />
 
           <h2 className="mt-4 text-lg font-semibold text-slate-900">
@@ -70,6 +77,6 @@ export default function UserDashboard() {
           </p>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

@@ -1,52 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
+import { CalendarDays, CarFront, CircleAlert, Eye, LoaderCircle, X } from "lucide-react";
+import bookingService from "@/services/bookingService";
+
+const getImageUrl = (image) => {
+    if (!image) {
+        return null;
+    }
+
+    if (image.startsWith("http://") || image.startsWith("https://")) {
+        return image;
+    }
+
+    return `http://localhost:5000/${image.replace(/^\//, "")}`;
+};
+
+const getVehicleName = (booking) =>
+    booking.vehicle_name ||
+    [booking.brand, booking.model].filter(Boolean).join(" ") ||
+    `Kendaraan ${booking.vehicle_id}`;
 
 export default function BookingsPage() {
     const router = useRouter();
 
-    const [bookings, setBookings] = useState([
-        {
-            id: 1,
-            vehicle: {
-                name: "Toyota Avanza",
-                image: "/images/avanza.jpg",
-                plate: "D 1234 ABC",
-            },
-            start_date: "2026-09-10",
-            end_date: "2026-09-12",
-            total_price: 700000,
-            status: "confirmed",
-        },
-        {
-            id: 2,
-            vehicle: {
-                name: "Honda Brio",
-                image: "/images/brio.jpg",
-                plate: "D 5678 DEF",
-            },
-            start_date: "2026-09-20",
-            end_date: "2026-09-22",
-            total_price: 500000,
-            status: "pending",
-        },
-        {
-            id: 3,
-            vehicle: {
-                name: "Toyota Innova",
-                image: "/images/innova.jpg",
-                plate: "D 9012 GHI",
-            },
-            start_date: "2026-08-15",
-            end_date: "2026-08-18",
-            total_price: 1200000,
-            status: "completed",
-        },
-    ]);
-
+    const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [cancellingId, setCancellingId] = useState(null);
     const [notice, setNotice] = useState("");
+
+    useEffect(() => {
+        const loadBookings = async () => {
+            try {
+                const response = await bookingService.getMine();
+                setBookings(response.data?.data || []);
+            } catch (requestError) {
+                setError(
+                    requestError.response?.data?.message ||
+                        "Gagal memuat daftar booking. Coba muat ulang halaman."
+                );
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadBookings();
+    }, []);
 
     const formatPrice = (price) => {
         return new Intl.NumberFormat("id-ID", {
@@ -61,7 +64,10 @@ export default function BookingsPage() {
             return "-";
         }
 
-        return new Date(date).toLocaleDateString("id-ID", {
+        const [year, month, day] = String(date).slice(0, 10).split("-");
+        const localDate = new Date(Number(year), Number(month) - 1, Number(day));
+
+        return localDate.toLocaleDateString("id-ID", {
             day: "2-digit",
             month: "short",
             year: "numeric",
@@ -118,7 +124,7 @@ export default function BookingsPage() {
         }
     };
 
-    const handleCancel = (id) => {
+    const handleCancel = async (id) => {
         const confirmCancel = window.confirm(
             "Apakah kamu yakin ingin membatalkan booking ini?"
         );
@@ -127,22 +133,27 @@ export default function BookingsPage() {
             return;
         }
 
-        setBookings((currentBookings) =>
-            currentBookings.map((booking) =>
-                booking.id === id
-                    ? {
-                          ...booking,
-                          status: "cancelled",
-                      }
-                    : booking
-            )
-        );
+        try {
+            setCancellingId(id);
+            const response = await bookingService.cancelMine(id);
+            const updatedBooking = response.data?.data;
 
-        setNotice("Booking berhasil dibatalkan.");
-
-        setTimeout(() => {
-            setNotice("");
-        }, 3000);
+            setBookings((currentBookings) =>
+                currentBookings.map((booking) =>
+                    booking.id === id
+                        ? { ...booking, ...updatedBooking, status: "cancelled" }
+                        : booking
+                )
+            );
+            setNotice("Booking berhasil dibatalkan.");
+        } catch (requestError) {
+            setNotice(
+                requestError.response?.data?.message ||
+                    "Gagal membatalkan booking. Coba lagi."
+            );
+        } finally {
+            setCancellingId(null);
+        }
     };
 
     return (
@@ -162,13 +173,32 @@ export default function BookingsPage() {
                 </div>
 
                 {notice && (
-                    <div className="mt-6 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-600">
+                    <div className="mt-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700" role="status">
                         {notice}
                     </div>
                 )}
 
                 <div className="mt-8 space-y-5">
-                    {bookings.length > 0 ? (
+                    {loading ? (
+                        <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-gray-200 bg-white text-sm text-gray-500">
+                            <LoaderCircle className="h-6 w-6 animate-spin text-blue-600" />
+                            <p className="mt-3">Memuat booking...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700" role="alert">
+                            <div className="flex items-center gap-2 font-medium">
+                                <CircleAlert className="h-5 w-5 shrink-0" />
+                                {error}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => window.location.reload()}
+                                className="mt-4 rounded-lg border border-red-200 bg-white px-3 py-2 font-medium hover:bg-red-100"
+                            >
+                                Coba lagi
+                            </button>
+                        </div>
+                    ) : bookings.length > 0 ? (
                         bookings.map((booking) => (
                             <div
                                 key={booking.id}
@@ -176,20 +206,19 @@ export default function BookingsPage() {
                             >
                                 <div className="p-5">
                                     <div className="flex flex-col gap-5 md:flex-row">
-                                        <div className="h-40 w-full shrink-0 overflow-hidden rounded-lg bg-gray-100 md:w-56">
-                                            <Image
-                                                src={
-                                                    booking.vehicle
-                                                        .image
-                                                }
-                                                alt={
-                                                    booking.vehicle
-                                                        .name
-                                                }
-                                                width={224}
-                                                height={160}
-                                                className="h-full w-full object-cover"
-                                            />
+                                        <div className="relative flex h-40 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100 md:w-56">
+                                            {getImageUrl(booking.vehicle_image) ? (
+                                                <Image
+                                                    src={getImageUrl(booking.vehicle_image)}
+                                                    alt={getVehicleName(booking)}
+                                                    fill
+                                                    sizes="(min-width: 768px) 224px, 100vw"
+                                                    unoptimized
+                                                    className="object-cover"
+                                                />
+                                            ) : (
+                                                <CarFront className="h-12 w-12 text-gray-300" />
+                                            )}
                                         </div>
 
                                         <div className="flex-1">
@@ -203,19 +232,11 @@ export default function BookingsPage() {
                                                     </p>
 
                                                     <h2 className="mt-1 text-lg font-semibold text-gray-800">
-                                                        {
-                                                            booking
-                                                                .vehicle
-                                                                .name
-                                                        }
+                                                        {getVehicleName(booking)}
                                                     </h2>
 
                                                     <p className="mt-1 text-sm text-gray-500">
-                                                        {
-                                                            booking
-                                                                .vehicle
-                                                                .plate
-                                                        }
+                                                        {booking.license_plate || "Nomor plat belum tersedia"}
                                                     </p>
                                                 </div>
 
@@ -271,29 +292,31 @@ export default function BookingsPage() {
                                             </div>
 
                                             <div className="mt-5 flex flex-wrap justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        router.push(
-                                                            `/bookings/${booking.id}`
-                                                        )
-                                                    }
-                                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                                                <Link
+                                                    href={`/user/bookings/${booking.id}`}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                                                 >
+                                                    <Eye className="h-4 w-4" />
                                                     Lihat Detail
-                                                </button>
+                                                </Link>
 
                                                 {booking.status ===
                                                     "pending" && (
                                                     <button
                                                         type="button"
+                                                        disabled={cancellingId === booking.id}
                                                         onClick={() =>
                                                             handleCancel(
                                                                 booking.id
                                                             )
                                                         }
-                                                        className="rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100"
+                                                        className="inline-flex items-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                                                     >
+                                                        {cancellingId === booking.id ? (
+                                                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <X className="h-4 w-4" />
+                                                        )}
                                                         Batalkan
                                                     </button>
                                                 )}
@@ -316,9 +339,7 @@ export default function BookingsPage() {
 
                             <button
                                 type="button"
-                                onClick={() =>
-                                    router.push("/vehicles")
-                                }
+                                onClick={() => router.push("/user/vehicles")}
                                 className="mt-5 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
                             >
                                 Cari Kendaraan

@@ -202,8 +202,8 @@ export default function PaymentsPage() {
 
     const getPaymentMethodLabel = (method) => {
         switch (method) {
-            case "bank_transfer":
-                return "Bank Transfer";
+            case "qris":
+                return "QRIS";
 
             case "cash":
                 return "Cash";
@@ -245,25 +245,6 @@ export default function PaymentsPage() {
                     {formatPrice(payment.amount)}
                 </span>
             ),
-        },
-        {
-            key: "payment_proof",
-            label: "Bukti Pembayaran",
-            render: (payment) =>
-                payment.payment_proof ? (
-                    <a
-                        href={payment.payment_proof}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
-                    >
-                        Lihat Bukti
-                    </a>
-                ) : (
-                    <span className="text-xs text-gray-400">
-                        Tidak ada
-                    </span>
-                ),
         },
         {
             key: "status",

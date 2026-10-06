@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import authService from "@/services/authService";
 
 export default function LoginForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [formData, setFormData] = useState({
         email: "",
@@ -15,6 +16,15 @@ export default function LoginForm() {
 
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const notice =
+        searchParams.get("message") === "login-required"
+            ? "Silakan login terlebih dahulu untuk melakukan pemesanan."
+            : "";
+    const requestedPath = searchParams.get("returnTo") || "";
+    const returnTo =
+        requestedPath.startsWith("/user/") && !requestedPath.startsWith("//")
+            ? requestedPath
+            : "";
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -51,15 +61,16 @@ export default function LoginForm() {
                 return;
             }
 
-            localStorage.setItem("token", token);
-            localStorage.setItem("user", JSON.stringify(user));
+            sessionStorage.setItem("token", token);
+            sessionStorage.setItem("user", JSON.stringify(user));
+            window.dispatchEvent(new Event("auth-change"));
 
             const role = user.role?.toLowerCase();
 
             if (role === "admin") {
                 router.push("/admin/dashboard");
             } else if (role === "user") {
-                router.push("/user/dashboard");
+                router.push(returnTo || "/user/dashboard");
             } else {
                 setError("Role user tidak valid.");
             }
@@ -92,6 +103,15 @@ export default function LoginForm() {
             {error && (
                 <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                     {error}
+                </div>
+            )}
+
+            {notice && (
+                <div
+                    role="status"
+                    className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+                >
+                    {notice}
                 </div>
             )}
 
