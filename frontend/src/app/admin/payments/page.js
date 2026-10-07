@@ -155,17 +155,32 @@ export default function PaymentsPage() {
     };
 
     const formatDateTime = (date) => {
-        if (!date) {
-            return "-";
+    if (!date) {
+        return "-";
+    }
+
+    return new Date(date).toLocaleString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
+    const getImageUrl = (image) => {
+        if (!image) {
+            return null;
         }
 
-        return new Date(date).toLocaleString("id-ID", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
+        if (
+            image.startsWith("http://") ||
+            image.startsWith("https://")
+        ) {
+            return image;
+        }
+
+        return `http://localhost:5000${image.startsWith("/") ? "" : "/"}${image}`;
     };
 
     const getStatusStyle = (status) => {
@@ -238,13 +253,30 @@ export default function PaymentsPage() {
             ),
         },
         {
-            key: "amount",
-            label: "Jumlah",
-            render: (payment) => (
-                <span className="font-medium text-gray-800">
-                    {formatPrice(payment.amount)}
-                </span>
-            ),
+            key: "payment_proof",
+            label: "Bukti",
+            render: (payment) => {
+                const imageUrl = getImageUrl(payment.payment_proof);
+
+                return imageUrl ? (
+                    <a
+                        href={imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex"
+                    >
+                        <img
+                            src={imageUrl}
+                            alt="Bukti pembayaran"
+                            className="h-12 w-16 rounded-lg border border-gray-200 object-cover transition hover:opacity-80"
+                        />
+                    </a>
+                ) : (
+                    <span className="text-sm text-gray-400">
+                        Tidak ada
+                    </span>
+                );
+            },
         },
         {
             key: "status",
