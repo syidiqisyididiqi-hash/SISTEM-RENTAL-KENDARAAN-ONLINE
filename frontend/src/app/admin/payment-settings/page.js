@@ -6,10 +6,10 @@ import {
     Upload,
     Trash2,
     RefreshCw,
-    CheckCircle2,
-    AlertCircle,
 } from "lucide-react";
 
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
 import paymentSettingService from "@/services/paymentSettingService";
 
 const Page = () => {
@@ -26,6 +26,14 @@ const Page = () => {
 
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+
+    const [toast, setToast] = useState({
+        open: false,
+        type: "success",
+        message: "",
+    });
+
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -44,10 +52,13 @@ const Page = () => {
                 if (!cancelled) {
                     console.error(error);
 
-                    setError(
-                        error.response?.data?.message ||
-                            "Gagal mengambil data QRIS."
-                    );
+                    setToast({
+                        open: true,
+                        type: "error",
+                        message:
+                            error.response?.data?.message ||
+                            "Gagal mengambil data QRIS.",
+                    });
                 }
             } finally {
                 if (!cancelled) {
@@ -98,18 +109,24 @@ const Page = () => {
         ];
 
         if (!allowedTypes.includes(file.type)) {
-            setError(
-                "Format gambar harus JPG, PNG, atau WEBP."
-            );
+            setToast({
+                open: true,
+                type: "error",
+                message:
+                    "Format gambar harus JPG, PNG, atau WEBP.",
+            });
 
             event.target.value = "";
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            setError(
-                "Ukuran gambar maksimal 5 MB."
-            );
+            setToast({
+                open: true,
+                type: "error",
+                message:
+                    "Ukuran gambar maksimal 5 MB.",
+            });
 
             event.target.value = "";
             return;
@@ -127,7 +144,13 @@ const Page = () => {
 
     const handleUpload = async () => {
         if (!selectedFile) {
-            setError("Silakan pilih gambar QRIS terlebih dahulu.");
+            setToast({
+                open: true,
+                type: "error",
+                message:
+                    "Silakan pilih gambar QRIS terlebih dahulu.",
+            });
+
             return;
         }
 
@@ -152,30 +175,28 @@ const Page = () => {
                 fileInputRef.current.value = "";
             }
 
-            setSuccess(
-                "Gambar QRIS berhasil diperbarui."
-            );
+            setToast({
+                open: true,
+                type: "success",
+                message:
+                    "Gambar QRIS berhasil diperbarui.",
+            });
         } catch (error) {
             console.error(error);
 
-            setError(
-                error.response?.data?.message ||
-                    "Gagal memperbarui gambar QRIS."
-            );
+            setToast({
+                open: true,
+                type: "error",
+                message:
+                    error.response?.data?.message ||
+                    "Gagal memperbarui gambar QRIS.",
+            });
         } finally {
             setUploading(false);
         }
     };
 
     const handleDelete = async () => {
-        const confirmed = window.confirm(
-            "Apakah Anda yakin ingin menghapus QRIS?"
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
         try {
             setDeleting(true);
             setError("");
@@ -191,18 +212,25 @@ const Page = () => {
                 fileInputRef.current.value = "";
             }
 
-            setSuccess(
-                "Gambar QRIS berhasil dihapus."
-            );
+            setToast({
+                open: true,
+                type: "success",
+                message:
+                    "Gambar QRIS berhasil dihapus.",
+            });
         } catch (error) {
             console.error(error);
 
-            setError(
-                error.response?.data?.message ||
-                    "Gagal menghapus gambar QRIS."
-            );
+            setToast({
+                open: true,
+                type: "error",
+                message:
+                    error.response?.data?.message ||
+                    "Gagal menghapus gambar QRIS.",
+            });
         } finally {
             setDeleting(false);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -228,21 +256,17 @@ const Page = () => {
                 </p>
             </div>
 
-            {success && (
-                <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                    <CheckCircle2 className="h-5 w-5 shrink-0" />
-
-                    <span>{success}</span>
-                </div>
-            )}
-
-            {error && (
-                <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-
-                    <span>{error}</span>
-                </div>
-            )}
+            <Toast
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() =>
+                    setToast((prev) => ({
+                        ...prev,
+                        open: false,
+                    }))
+                }
+            />
 
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
                 <div className="border-b border-gray-200 px-6 py-5">
@@ -424,7 +448,7 @@ const Page = () => {
                                     {qrisImage && (
                                         <button
                                             type="button"
-                                            onClick={handleDelete}
+                                            onClick={() => setShowDeleteConfirm(true)}
                                             disabled={deleting}
                                             className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
@@ -466,6 +490,17 @@ const Page = () => {
                         </div>
                     )}
                 </div>
+                <ConfirmDialog
+                    open={showDeleteConfirm}
+                    type="danger"
+                    title="Hapus QRIS?"
+                    description="Apakah Anda yakin ingin menghapus gambar QRIS? Customer tidak dapat menggunakan QRIS untuk melakukan pembayaran sampai gambar QRIS baru diunggah."
+                    confirmText="Hapus QRIS"
+                    cancelText="Batal"
+                    onConfirm={handleDelete}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                    loading={deleting}
+                />
             </div>
         </div>
     );
