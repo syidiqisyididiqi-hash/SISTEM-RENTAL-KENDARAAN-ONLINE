@@ -16,148 +16,168 @@ import {
 } from "lucide-react";
 import bookingService from "@/services/bookingService";
 import paymentSettingService from "@/services/paymentSettingService";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
+import Button from "@/components/ui/Button";
 
-const statusLabels = {
-    pending: "Menunggu",
-    confirmed: "Dikonfirmasi",
-    ongoing: "Sedang Berjalan",
-    completed: "Selesai",
-    cancelled: "Dibatalkan",
-    rejected: "Ditolak",
-};
+    const statusLabels = {
+        pending: "Menunggu",
+        confirmed: "Dikonfirmasi",
+        ongoing: "Sedang Berjalan",
+        completed: "Selesai",
+        cancelled: "Dibatalkan",
+        rejected: "Ditolak",
+    };
 
-const paymentStatusLabels = {
-    pending: "Menunggu pembayaran",
-    paid: "Sudah dibayar",
-    rejected: "Pembayaran ditolak",
-};
+    const paymentStatusLabels = {
+        pending: "Menunggu pembayaran",
+        paid: "Sudah dibayar",
+        rejected: "Pembayaran ditolak",
+    };
 
-const paymentMethodLabels = {
-    bank_transfer: "Mandiri",
-    qris: "QRIS",
-    cash: "Tunai",
-};
+    const paymentMethodLabels = {
+        bank_transfer: "Mandiri",
+        qris: "QRIS",
+        cash: "Tunai",
+    };
 
-const getImageUrl = (image) => {
-    if (!image || typeof image !== "string") {
-        return null;
-    }
-
-    if (image.startsWith("http://") || image.startsWith("https://")) {
-        return image;
-    }
-
-    return `http://localhost:5000/${image.replace(/^\//, "")}`;
-};
-
-const formatDate = (date) => {
-    if (!date) {
-        return "-";
-    }
-
-    const [year, month, day] = String(date).slice(0, 10).split("-");
-    return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString(
-        "id-ID",
-        { day: "2-digit", month: "long", year: "numeric" }
-    );
-};
-
-const formatPrice = (price) =>
-    new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-        maximumFractionDigits: 0,
-    }).format(Number(price) || 0);
-
-const statusStyle = (status) => {
-    if (status === "confirmed" || status === "ongoing") {
-        return "bg-blue-50 text-blue-700";
-    }
-    if (status === "completed") {
-        return "bg-green-50 text-green-700";
-    }
-    if (status === "cancelled" || status === "rejected") {
-        return "bg-red-50 text-red-700";
-    }
-    return "bg-amber-50 text-amber-700";
-};
-
-export default function BookingDetailPage() {
-    const { id } = useParams();
-    const router = useRouter();
-    const [booking, setBooking] = useState(null);
-    const [qrisImage, setQrisImage] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [cancelling, setCancelling] = useState(false);
-    const [error, setError] = useState("");
-    const [notice, setNotice] = useState("");
-
-    useEffect(() => {
-        const loadBooking = async () => {
-            try {
-                const response = await bookingService.getMineById(id);
-                const nextBooking = response.data?.data || null;
-
-                setBooking(nextBooking);
-
-                if (nextBooking?.payment_method !== "qris") {
-                    setQrisImage(null);
-                }
-            } catch (requestError) {
-                setError(
-                    requestError.response?.data?.message ||
-                        "Gagal memuat detail booking."
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (id) {
-            loadBooking();
-        }
-    }, [id]);
-
-    useEffect(() => {
-        if (booking?.payment_method !== "qris") {
-            return;
+    const getImageUrl = (image) => {
+        if (!image || typeof image !== "string") {
+            return null;
         }
 
-        let active = true;
+        const cleanedImage = image.trim();
 
-        const loadQrisImage = async () => {
-            try {
-                const response = await paymentSettingService.get();
-                const nextImage = response.data?.data?.qris_image_url || null;
+        if (
+            /^https?:\/\/localhost:3000\/uploads\//i.test(cleanedImage)
+        ) {
+            return cleanedImage.replace(
+                /^https?:\/\/localhost:3000/i,
+                "http://localhost:5000"
+            );
+        }
 
-                if (active) {
-                    setQrisImage(nextImage);
+        if (/^https?:\/\//i.test(cleanedImage)) {
+            return cleanedImage;
+        }
+
+        return `http://localhost:5000/${cleanedImage.replace(/^\/+/, "")}`;
+    };
+
+    const formatDate = (date) => {
+        if (!date) {
+            return "-";
+        }
+
+        const [year, month, day] = String(date).slice(0, 10).split("-");
+        return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString(
+            "id-ID",
+            { day: "2-digit", month: "long", year: "numeric" }
+        );
+    };
+
+    const formatPrice = (price) =>
+        new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            maximumFractionDigits: 0,
+        }).format(Number(price) || 0);
+
+    const statusStyle = (status) => {
+        if (status === "confirmed" || status === "ongoing") {
+            return "bg-blue-50 text-blue-700";
+        }
+        if (status === "completed") {
+            return "bg-green-50 text-green-700";
+        }
+        if (status === "cancelled" || status === "rejected") {
+            return "bg-red-50 text-red-700";
+        }
+        return "bg-amber-50 text-amber-700";
+    };
+
+    export default function BookingDetailPage() {
+        const { id } = useParams();
+        const router = useRouter();
+        const [booking, setBooking] = useState(null);
+        const [qrisImage, setQrisImage] = useState(null);
+        const [loading, setLoading] = useState(true);
+        const [cancelling, setCancelling] = useState(false);
+        const [error, setError] = useState("");
+        const [notice, setNotice] = useState("");
+        const [showCancelDialog, setShowCancelDialog] = useState(false);
+        const [showProofPreview, setShowProofPreview] = useState(false);
+        useEffect(() => {
+            const loadBooking = async () => {
+                try {
+                    const response = await bookingService.getMineById(id);
+                    const nextBooking = response.data?.data || null;
+
+                    setBooking(nextBooking);
+
+                    if (nextBooking?.payment_method !== "qris") {
+                        setQrisImage(null);
+                    }
+                } catch (requestError) {
+                    setError(
+                        requestError.response?.data?.message ||
+                            "Gagal memuat detail booking."
+                    );
+                } finally {
+                    setLoading(false);
                 }
-            } catch (requestError) {
-                if (active) {
-                    console.error("Gagal memuat QRIS:", requestError);
-                    setQrisImage(null);
-                }
+            };
+
+            if (id) {
+                loadBooking();
             }
-        };
+        }, [id]);
 
-        loadQrisImage();
+        useEffect(() => {
+            if (booking?.payment_method !== "qris") {
+                return;
+            }
 
-        return () => {
-            active = false;
-        };
-    }, [booking?.payment_method]);
+            let active = true;
+
+            const loadQrisImage = async () => {
+                try {
+                    const response = await paymentSettingService.get();
+                    const nextImage = response.data?.data?.qris_image_url || null;
+
+                    if (active) {
+                        setQrisImage(nextImage);
+                    }
+                } catch (requestError) {
+                    if (active) {
+                        console.error("Gagal memuat QRIS:", requestError);
+                        setQrisImage(null);
+                    }
+                }
+            };
+
+            loadQrisImage();
+
+            return () => {
+                active = false;
+            };
+        }, [booking?.payment_method]);
 
     const handleCancel = async () => {
-        if (!window.confirm("Yakin ingin membatalkan booking ini?")) {
-            return;
-        }
-
         try {
             setCancelling(true);
+
             const response = await bookingService.cancelMine(id);
-            setBooking(response.data?.data || { ...booking, status: "cancelled" });
+
+            setBooking(
+                response.data?.data || {
+                    ...booking,
+                    status: "cancelled",
+                }
+            );
+
             setNotice("Booking berhasil dibatalkan.");
+            setShowCancelDialog(false);
         } catch (requestError) {
             setNotice(
                 requestError.response?.data?.message ||
@@ -230,9 +250,10 @@ export default function BookingDetailPage() {
             </header>
 
             {notice && (
-                <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700" role="status">
-                    {notice}
-                </div>
+                <Toast
+                    message={notice}
+                    onClose={() => setNotice("")}
+                />
             )}
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
@@ -371,34 +392,119 @@ export default function BookingDetailPage() {
                                 )}
                             </div>
                         )}
-
+                        
                         {booking.payment_proof && (
-                            <a
-                                href={booking.payment_proof}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-3 inline-flex text-sm font-medium text-blue-700 hover:underline"
+                            <div className="mt-4">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                    Bukti Pembayaran
+                                </p>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowProofPreview(true)}
+                                    className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                                >
+                                    Lihat bukti pembayaran
+                                </button>
+
+                                <a
+                                    href={getImageUrl(booking.payment_proof)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="ml-3 inline-flex text-sm font-medium text-gray-600 hover:text-blue-700 hover:underline"
+                                >
+                                    Buka tab baru
+                                </a>
+                            </div>
+                        )}
+
+                        {showProofPreview && booking.payment_proof && (
+                            <div
+                                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-label="Preview bukti pembayaran"
+                                onClick={() => setShowProofPreview(false)}
                             >
-                                Lihat bukti pembayaran
-                            </a>
+                                <div
+                                    className="relative w-full max-w-3xl rounded-xl bg-white p-4 shadow-xl"
+                                    onClick={(event) => event.stopPropagation()}
+                                >
+                                    <div className="mb-4 flex items-center justify-between gap-4">
+                                        <h2 className="text-lg font-semibold text-gray-900">
+                                            Bukti Pembayaran
+                                        </h2>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowProofPreview(false)}
+                                            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                                            aria-label="Tutup preview"
+                                        >
+                                            <X className="h-5 w-5" />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex max-h-[75vh] items-center justify-center overflow-auto rounded-lg bg-gray-50 p-2">
+                                        <img
+                                            src={getImageUrl(booking.payment_proof)}
+                                            alt="Bukti pembayaran booking"
+                                            className="max-h-[70vh] max-w-full rounded-lg object-contain"
+                                        />
+                                    </div>
+
+                                    <div className="mt-4 flex justify-end">
+                                        <a
+                                            href={getImageUrl(booking.payment_proof)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                                        >
+                                            Buka gambar penuh
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </div>
+                    
+                    {booking.status === "pending" &&
+                        booking.payment_status !== "paid" && (
+                            <Button
+                                type="button"
+                                onClick={() =>
+                                    router.push(`/user/payments/${booking.id}`)
+                                }
+                                className="mt-6 w-full"
+                            >
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Bayar Sekarang
+                            </Button>
+                        )}
 
-                    {booking.status === "pending" && (
-                        <button
-                            type="button"
-                            onClick={handleCancel}
-                            disabled={cancelling}
-                            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {cancelling ? (
-                                <LoaderCircle className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <X className="h-4 w-4" />
-                            )}
-                            Batalkan booking
-                        </button>
-                    )}
+                        {booking.status === "pending" && (
+                            <Button
+                                type="button"
+                                variant="danger"
+                                onClick={() => setShowCancelDialog(true)}
+                                disabled={cancelling}
+                                className="mt-3 w-full"
+                            >
+                                <X className="mr-2 h-4 w-4" />
+                                Batalkan booking
+                            </Button>
+                        )}
+
+                    <ConfirmDialog
+                        open={showCancelDialog}
+                        title="Batalkan Booking?"
+                        message="Apakah kamu yakin ingin membatalkan booking ini? Tindakan ini akan mengubah status booking menjadi dibatalkan."
+                        confirmText="Ya, Batalkan"
+                        cancelText="Kembali"
+                        onConfirm={handleCancel}
+                        onCancel={() => setShowCancelDialog(false)}
+                        loading={cancelling}
+                    />
                 </aside>
             </div>
         </div>
