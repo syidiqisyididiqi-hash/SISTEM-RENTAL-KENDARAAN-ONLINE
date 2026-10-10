@@ -4,25 +4,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Toast from "@/components/ui/Toast";
 import { CalendarDays, CarFront, CircleAlert, Eye, LoaderCircle, X } from "lucide-react";
 import bookingService from "@/services/bookingService";
 
-const getImageUrl = (image) => {
-    if (!image) {
-        return null;
-    }
+    const getImageUrl = (image) => {
+        if (!image) {
+            return null;
+        }
 
-    if (image.startsWith("http://") || image.startsWith("https://")) {
-        return image;
-    }
+        if (image.startsWith("http://") || image.startsWith("https://")) {
+            return image;
+        }
 
-    return `http://localhost:5000/${image.replace(/^\//, "")}`;
-};
+        return `http://localhost:5000/${image.replace(/^\//, "")}`;
+    };
 
-const getVehicleName = (booking) =>
-    booking.vehicle_name ||
-    [booking.brand, booking.model].filter(Boolean).join(" ") ||
-    `Kendaraan ${booking.vehicle_id}`;
+    const getVehicleName = (booking) =>
+        booking.vehicle_name ||
+        [booking.brand, booking.model].filter(Boolean).join(" ") ||
+        `Kendaraan ${booking.vehicle_id}`;
 
 export default function BookingsPage() {
     const router = useRouter();
@@ -32,6 +34,9 @@ export default function BookingsPage() {
     const [error, setError] = useState("");
     const [cancellingId, setCancellingId] = useState(null);
     const [notice, setNotice] = useState("");
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const [selectedBookingId, setSelectedBookingId] = useState(null);
+    const [toast, setToast] = useState(null);
 
     useEffect(() => {
         const loadBookings = async () => {
@@ -124,37 +129,57 @@ export default function BookingsPage() {
         }
     };
 
-    const handleCancel = async (id) => {
-        const confirmCancel = window.confirm(
-            "Apakah kamu yakin ingin membatalkan booking ini?"
-        );
+    const handleCancel = (id) => {
+    setSelectedBookingId(id);
+    setShowCancelDialog(true);
+    };
 
-        if (!confirmCancel) {
-            return;
-        }
+    
+    const confirmCancel = async () => {
+        if (selectedBookingId === null) return;
+
+        const bookingId = selectedBookingId;
 
         try {
-            setCancellingId(id);
-            const response = await bookingService.cancelMine(id);
+            setCancellingId(bookingId);
+
+            const response = await bookingService.cancelMine(bookingId);
             const updatedBooking = response.data?.data;
 
             setBookings((currentBookings) =>
                 currentBookings.map((booking) =>
-                    booking.id === id
-                        ? { ...booking, ...updatedBooking, status: "cancelled" }
+                    booking.id === bookingId
+                        ? {
+                            ...booking,
+                            ...updatedBooking,
+                            status: "cancelled",
+                        }
                         : booking
                 )
             );
-            setNotice("Booking berhasil dibatalkan.");
+
+            setShowCancelDialog(false);
+            setSelectedBookingId(null);
+
+            setToast({
+                type: "success",
+                message: "Kamu telah berhasil membatalkan booking.",
+            });
         } catch (requestError) {
-            setNotice(
-                requestError.response?.data?.message ||
-                    "Gagal membatalkan booking. Coba lagi."
-            );
+            setShowCancelDialog(false);
+            setSelectedBookingId(null);
+
+            setToast({
+                type: "error",
+                message:
+                    requestError.response?.data?.message ||
+                    "Gagal membatalkan booking. Silakan coba lagi.",
+            });
         } finally {
             setCancellingId(null);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -348,6 +373,32 @@ export default function BookingsPage() {
                     )}
                 </div>
             </div>
+                        
+            <ConfirmDialog
+                open={showCancelDialog}
+                type="danger"
+                title="Batalkan Booking?"
+                description="Apakah kamu yakin ingin membatalkan booking ini?"
+                confirmText="Ya, Batalkan"
+                cancelText="Tidak"
+                onConfirm={confirmCancel}
+                onCancel={() => {
+                    setShowCancelDialog(false);
+                    setSelectedBookingId(null);
+                }}
+                loading={cancellingId !== null}
+            />
+            
+            {toast && (
+                <Toast
+                    open={Boolean(toast)}
+                    type={toast.type}
+                    message={toast.message}
+                    onClose={() => setToast(null)}
+                />
+            )}
+
+
         </div>
     );
 }
