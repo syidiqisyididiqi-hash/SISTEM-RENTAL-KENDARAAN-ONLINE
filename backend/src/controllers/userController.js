@@ -46,17 +46,44 @@ const createUser = async (req, res) => {
     }
 };
 
+
 const getAllUsers = async (req, res) => {
     try {
-        const users = await userService.getAllUsers();
+        const {
+            search = '',
+            role = '',
+            sortBy = 'id',
+            sortOrder = 'desc',
+            page = 1,
+            limit = 10
+        } = req.query;
 
-        res.status(200).json({
+        if (role && !['user', 'admin'].includes(role)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Filter role harus user atau admin'
+            });
+        }
+
+        const result = await userService.getAllUsers({
+            search,
+            role,
+            sortBy,
+            sortOrder,
+            page,
+            limit
+        });
+
+        return res.status(200).json({
             success: true,
             message: 'Data user berhasil diambil',
-            data: users
+            data: result.users,
+            pagination: result.pagination
         });
     } catch (error) {
-        res.status(500).json({
+        console.error('Get all users error:', error);
+
+        return res.status(500).json({
             success: false,
             message: 'Gagal mengambil data user',
             error: error.message

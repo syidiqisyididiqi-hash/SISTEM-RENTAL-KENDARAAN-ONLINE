@@ -1,21 +1,30 @@
+
 import api from "@/lib/axios";
 
 const userService = {
-    getAll: () => api.get("/users"),
+    getAll: (params = {}) =>
+        api.get("/users", { params }),
 
-    getCustomers: () => api.get("/users/customers"),
+    getCustomers: () =>
+        api.get("/users/customers"),
 
-    getById: (id) => api.get(`/users/${id}`),
+    getById: (id) =>
+        api.get(`/users/${id}`),
 
-    create: (data) => api.post("/users", data),
+    create: (data) =>
+        api.post("/users", data),
 
-    update: (id, data) => api.put(`/users/${id}`, data),
+    update: (id, data) =>
+        api.put(`/users/${id}`, data),
 
-    remove: (id) => api.delete(`/users/${id}`),
+    remove: (id) =>
+        api.delete(`/users/${id}`),
 
-    getProfile: () => api.get("/users/profile"),
+    getProfile: () =>
+        api.get("/users/profile"),
 
-    updateProfile: (data) => api.put("/users/profile", data),
+    updateProfile: (data) =>
+        api.put("/users/profile", data),
 };
 
 export default userService;

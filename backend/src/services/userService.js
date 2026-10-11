@@ -1,14 +1,90 @@
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-const getAllUsers = async () => {
-    const [rows] = await pool.query(
-        `SELECT id, name, email, phone, address, role, created_at, updated_at
-         FROM users
-         ORDER BY id DESC`
+
+const getAllUsers = async ({
+    search = '',
+    role = '',
+    sortBy = 'id',
+    sortOrder = 'desc',
+    page = 1,
+    limit = 10
+} = {}) => {
+    const allowedSortColumns = {
+        id: 'id',
+        name: 'name',
+        email: 'email',
+        role: 'role',
+        created_at: 'created_at'
+    };
+
+    const safeSortBy = allowedSortColumns[sortBy]
+        ? sortBy
+        : 'id';
+
+    const safeSortOrder =
+        String(sortOrder).toLowerCase() === 'asc'
+            ? 'ASC'
+            : 'DESC';
+
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.min(
+        100,
+        Math.max(1, parseInt(limit, 10) || 10)
     );
 
-    return rows;
+    const offset = (safePage - 1) * safeLimit;
+
+    const conditions = [];
+    const params = [];
+
+    if (search.trim()) {
+        conditions.push(
+            '(name LIKE ? OR email LIKE ? OR phone LIKE ?)'
+        );
+
+        const keyword = `%${search.trim()}%`;
+
+        params.push(keyword, keyword, keyword);
+    }
+
+    if (role && ['user', 'admin'].includes(role)) {
+        conditions.push('role = ?');
+        params.push(role);
+    }
+
+    const whereClause = conditions.length
+        ? `WHERE ${conditions.join(' AND ')}`
+        : '';
+
+    const [countRows] = await pool.query(
+        `SELECT COUNT(*) AS total
+         FROM users
+         ${whereClause}`,
+        params
+    );
+
+    const [rows] = await pool.query(
+        `SELECT id, name, email, phone, address, role,
+                created_at, updated_at
+         FROM users
+         ${whereClause}
+         ORDER BY ${safeSortBy} ${safeSortOrder}
+         LIMIT ? OFFSET ?`,
+        [...params, safeLimit, offset]
+    );
+
+    return {
+        users: rows,
+        pagination: {
+            total: Number(countRows[0].total),
+            page: safePage,
+            limit: safeLimit,
+            totalPages: Math.ceil(
+                Number(countRows[0].total) / safeLimit
+            )
+        }
+    };
 };
 
 const getCustomers = async () => {
