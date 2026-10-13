@@ -1,20 +1,59 @@
 const categoryService = require("../services/categoryService");
 
+
 const getAllCategories = async (req, res) => {
     try {
-        const categories = await categoryService.getAllCategories();
+        const {
+            search = "",
+            sortBy = "id",
+            sortOrder = "asc",
+            page = "1",
+            limit = "10",
+        } = req.query;
+
+        const allowedSortBy = ["id", "name"];
+        const safeSortBy = allowedSortBy.includes(sortBy)
+            ? sortBy
+            : "id";
+
+        const safeSortOrder =
+            String(sortOrder).toLowerCase() === "desc"
+                ? "desc"
+                : "asc";
+
+        const parsedPage = Number.parseInt(page, 10);
+        const parsedLimit = Number.parseInt(limit, 10);
+
+        const safePage =
+            Number.isInteger(parsedPage) && parsedPage > 0
+                ? parsedPage
+                : 1;
+
+        const safeLimit =
+            [10, 25, 50].includes(parsedLimit)
+                ? parsedLimit
+                : 10;
+
+        const result = await categoryService.getAllCategories({
+            search: String(search).trim(),
+            sortBy: safeSortBy,
+            sortOrder: safeSortOrder,
+            page: safePage,
+            limit: safeLimit,
+        });
 
         res.status(200).json({
             success: true,
-            message: "Berhasil mengambil semua kategori",
-            data: categories
+            message: "Berhasil mengambil kategori",
+            data: result.categories,
+            pagination: result.pagination,
         });
     } catch (error) {
         console.error(error);
 
         res.status(500).json({
             success: false,
-            message: "Gagal mengambil data kategori"
+            message: "Gagal mengambil data kategori",
         });
     }
 };
