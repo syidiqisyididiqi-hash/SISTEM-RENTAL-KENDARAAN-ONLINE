@@ -2,9 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-
 import vehicleService from "@/services/vehicleService";
-
+import categoryService from "@/services/categoryService";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
@@ -93,6 +92,24 @@ export default function VehiclesPage() {
     const [deletingId, setDeletingId] = useState(null);
     const [failedImages, setFailedImages] = useState(new Set());
     const [error, setError] = useState("");
+
+    const [search, setSearch] = useState("");
+    const [categoryId, setCategoryId] = useState("");
+    const [status, setStatus] = useState("");
+    const [sortBy, setSortBy] = useState("id");
+    const [sortOrder, setSortOrder] = useState("desc");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    const [categories, setCategories] = useState([]);
+    const [pagination, setPagination] = useState({
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+    });
+
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
 
@@ -103,24 +120,88 @@ export default function VehiclesPage() {
     });
 
     useEffect(() => {
+        let isActive = true;
+
         const loadVehicles = async () => {
             try {
-                const response = await vehicleService.getAll();
+                setLoading(true);
+
+                const response = await vehicleService.getAll({
+                    search: search.trim(),
+                    categoryId,
+                    status,
+                    sortBy,
+                    sortOrder,
+                    page,
+                    limit,
+                });
+
+                if (!isActive) return;
 
                 setVehicles(response.data?.data || []);
+                setPagination(
+                    response.data?.pagination || {
+                        total: 0,
+                        page: 1,
+                        limit,
+                        totalPages: 0,
+                    }
+                );
                 setError("");
             } catch (error) {
+                if (!isActive) return;
+
+                setVehicles([]);
                 setError(
                     error.response?.data?.message ||
                         "Gagal mengambil data kendaraan."
                 );
             } finally {
-                setLoading(false);
+                if (isActive) {
+                    setLoading(false);
+                }
             }
         };
 
-        loadVehicles();
+        const timeout = setTimeout(loadVehicles, 300);
+
+        return () => {
+            isActive = false;
+            clearTimeout(timeout);
+        };
+    }, [
+        search,
+        categoryId,
+        status,
+        sortBy,
+        sortOrder,
+        page,
+        limit,
+        refreshKey,
+    ]);
+
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const response = await categoryService.getAll();
+                setCategories(response.data?.data || []);
+            } catch (error) {
+                console.error("Gagal mengambil kategori:", error);
+            }
+        };
+
+        loadCategories();
     }, []);
+
+    const handleResetFilters = () => {
+        setSearch("");
+        setCategoryId("");
+        setStatus("");
+        setSortBy("id");
+        setSortOrder("desc");
+        setPage(1);
+        setLimit(10);
+    };
 
     const handleDelete = async () => {
         if (!selectedVehicle) {
@@ -133,11 +214,11 @@ export default function VehiclesPage() {
 
             await vehicleService.remove(selectedVehicle.id);
 
-            setVehicles((currentVehicles) =>
-                currentVehicles.filter(
-                    (item) => item.id !== selectedVehicle.id
-                )
-            );
+            if (vehicles.length === 1 && page > 1) {
+                setPage((currentPage) => currentPage - 1);
+            } else {
+                setRefreshKey((current) => current + 1);
+            }
 
             setShowDeleteDialog(false);
             setSelectedVehicle(null);
@@ -177,7 +258,7 @@ export default function VehiclesPage() {
         {
             key: "no",
             label: "No",
-            render: (_, index) => index + 1,
+            render: (_, index) => (page - 1) * limit + index + 1,
         },
         {
             key: "image",
@@ -329,18 +410,184 @@ export default function VehiclesPage() {
                 </LinkButton>
             </div>
 
-            <div className="mt-6">
-                {error ? (
-                    <p className="text-sm text-red-500">
-                        {error}
-                    </p>
-                ) : (
-                    <DataTable
-                        columns={columns}
-                        data={vehicles}
-                        loading={loading}
-                    />
+            <div className="mt-6 space-y-4">
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Cari Kendaraan
+                            </label>
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPage(1);
+                                }}
+                                placeholder="Nama, merek, model, atau plat nomor..."
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Kategori
+                            </label>
+                            <select
+                                value={categoryId}
+                                onChange={(e) => {
+                                    setCategoryId(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                            >
+                                <option value="">Semua Kategori</option>
+                                {categories.map((category) => (
+                                    <option
+                                        key={category.id}
+                                        value={category.id}
+                                    >
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Status
+                            </label>
+                            <select
+                                value={status}
+                                onChange={(e) => {
+                                    setStatus(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                            >
+                                <option value="">Semua Status</option>
+                                <option value="available">Tersedia</option>
+                                <option value="rented">Disewa</option>
+                                <option value="maintenance">Dalam Perawatan</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Urutkan Berdasarkan
+                            </label>
+                            <select
+                                value={sortBy}
+                                onChange={(e) => {
+                                    setSortBy(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                            >
+                                <option value="id">ID Kendaraan</option>
+                                <option value="name">Nama</option>
+                                <option value="brand">Merek</option>
+                                <option value="price_per_day">Harga per Hari</option>
+                                <option value="stock">Stok</option>
+                                <option value="created_at">Tanggal Dibuat</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Urutan
+                            </label>
+                            <select
+                                value={sortOrder}
+                                onChange={(e) => {
+                                    setSortOrder(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                            >
+                                <option value="desc">Terbaru / Terbesar</option>
+                                <option value="asc">Terlama / Terkecil</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Data per Halaman
+                            </label>
+                            <select
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                            >
+                                <option value={10}>10 Data</option>
+                                <option value={25}>25 Data</option>
+                                <option value={50}>50 Data</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleResetFilters}
+                        >
+                            Reset Filter
+                        </Button>
+                    </div>
+                </div>
+
+                {error && (
+                    <p className="text-sm text-red-500">{error}</p>
                 )}
+
+                <DataTable
+                    columns={columns}
+                    data={vehicles}
+                    loading={loading}
+                />
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-gray-500">
+                        {pagination.total === 0
+                            ? "Tidak ada data kendaraan"
+                            : `Menampilkan ${
+                                (page - 1) * limit + 1
+                            }–${Math.min(
+                                page * limit,
+                                pagination.total
+                            )} dari ${pagination.total} kendaraan`}
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={page <= 1 || loading}
+                            onClick={() => setPage((current) => current - 1)}
+                        >
+                            Sebelumnya
+                        </Button>
+
+                        <span className="text-sm text-gray-600">
+                            Halaman {page} dari {Math.max(1, pagination.totalPages)}
+                        </span>
+
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={
+                                page >= pagination.totalPages || loading
+                            }
+                            onClick={() => setPage((current) => current + 1)}
+                        >
+                            Berikutnya
+                        </Button>
+                    </div>
+                </div>
             </div>
 
             <ConfirmDialog

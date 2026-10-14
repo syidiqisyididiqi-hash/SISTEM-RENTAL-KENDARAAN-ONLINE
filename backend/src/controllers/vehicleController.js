@@ -1,21 +1,50 @@
 const vehicleService = require('../services/vehicleService');
 
+
 const getAllVehicles = async (req, res) => {
     try {
-        const vehicles = await vehicleService.getAllVehicles();
+        const {
+            search = "",
+            categoryId = "",
+            status = "",
+            sortBy = "id",
+            sortOrder = "desc",
+            page = 1,
+            limit = 10
+        } = req.query;
+
+        const result = await vehicleService.getAllVehicles({
+            search,
+            categoryId,
+            status,
+            sortBy,
+            sortOrder,
+            page,
+            limit
+        });
 
         res.status(200).json({
             success: true,
             message: 'Data kendaraan berhasil diambil',
-            data: vehicles
+            data: result.vehicles,
+            pagination: result.pagination
         });
     } catch (error) {
         console.error('Get all vehicles error:', error);
 
+        if (
+            error.message === "Filter kategori tidak valid" ||
+            error.message === "Filter status tidak valid"
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil data kendaraan',
-            error: error.message
+            message: 'Gagal mengambil data kendaraan'
         });
     }
 };

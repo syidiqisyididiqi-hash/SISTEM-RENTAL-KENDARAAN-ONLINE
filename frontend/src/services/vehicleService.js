@@ -1,7 +1,8 @@
+
 import api from "@/lib/axios";
 
 const vehicleService = {
-    getAll: () => api.get("/vehicles"),
+    getAll: (params = {}) => api.get("/vehicles", { params }),
 
     getAvailable: () => api.get("/vehicles/available"),
 
