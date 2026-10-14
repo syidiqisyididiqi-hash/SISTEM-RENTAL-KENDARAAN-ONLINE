@@ -172,7 +172,7 @@ export default function UsersPage() {
         {
             key: "no",
             label: "No",
-            render: (_, index) => index + 1,
+            render: (_, index) => (page - 1) * limit + index + 1,
         },
         {
             key: "name",
