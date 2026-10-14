@@ -9,7 +9,98 @@ const allowedBookingStatuses = [
     'rejected'
 ];
 
-const getAllBookings = async () => {
+
+const getAllBookings = async ({
+    search = "",
+    status = "",
+    startDate = "",
+    endDate = "",
+    sortBy = "created_at",
+    sortOrder = "desc",
+    page = 1,
+    limit = 10
+} = {}) => {
+    const conditions = [];
+    const params = [];
+
+    if (search.trim()) {
+        conditions.push(`(
+            u.name LIKE ?
+            OR v.name LIKE ?
+            OR v.brand LIKE ?
+            OR v.model LIKE ?
+            OR CAST(b.id AS CHAR) LIKE ?
+        )`);
+
+        const keyword = `%${search.trim()}%`;
+
+        params.push(
+            keyword,
+            keyword,
+            keyword,
+            keyword,
+            keyword
+        );
+    }
+
+    if (status) {
+        if (!allowedBookingStatuses.includes(status)) {
+            throw new Error("Status booking tidak valid");
+        }
+
+        conditions.push("b.status = ?");
+        params.push(status);
+    }
+
+    if (startDate) {
+        conditions.push("b.start_date >= ?");
+        params.push(startDate);
+    }
+
+    if (endDate) {
+        conditions.push("b.start_date <= ?");
+        params.push(endDate);
+    }
+
+    const allowedSortColumns = {
+        id: "b.id",
+        created_at: "b.created_at",
+        start_date: "b.start_date",
+        end_date: "b.end_date",
+        total_price: "b.total_price",
+        total_days: "b.total_days",
+        user_name: "u.name",
+        vehicle_name: "v.name"
+    };
+
+    const sortColumn =
+        allowedSortColumns[sortBy] || "b.created_at";
+
+    const order =
+        sortOrder.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+    const whereClause = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const parsedLimit = Math.min(
+        100,
+        Math.max(1, parseInt(limit, 10) || 10)
+    );
+
+    const offset = (parsedPage - 1) * parsedLimit;
+
+    const [countRows] = await pool.query(`
+        SELECT COUNT(*) AS total
+        FROM bookings b
+        JOIN users u ON b.user_id = u.id
+        JOIN vehicles v ON b.vehicle_id = v.id
+        ${whereClause}
+    `, params);
+
+    const total = Number(countRows[0].total);
+
     const [rows] = await pool.query(`
         SELECT
             b.id,
@@ -31,10 +122,20 @@ const getAllBookings = async () => {
         FROM bookings b
         JOIN users u ON b.user_id = u.id
         JOIN vehicles v ON b.vehicle_id = v.id
-        ORDER BY b.created_at DESC
-    `);
+        ${whereClause}
+        ORDER BY ${sortColumn} ${order}, b.id DESC
+        LIMIT ? OFFSET ?
+    `, [...params, parsedLimit, offset]);
 
-    return rows;
+    return {
+        data: rows,
+        pagination: {
+            page: parsedPage,
+            limit: parsedLimit,
+            total,
+            totalPages: Math.ceil(total / parsedLimit)
+        }
+    };
 };
 
 const getBookingById = async (id, userId) => {
@@ -157,8 +258,11 @@ const createBooking = async (data) => {
             throw new Error('Stok kendaraan habis');
         }
 
-        const start = new Date(start_date);
-        const end = new Date(end_date);
+        const nextStartDate = start_date || booking.start_date;
+        const nextEndDate = end_date || booking.end_date;
+
+        const start = new Date(nextStartDate);
+        const end = new Date(nextEndDate);
 
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
             throw new Error('Tanggal booking tidak valid');
@@ -170,12 +274,19 @@ const createBooking = async (data) => {
             );
         }
 
-        const total_days = Math.ceil(
-            (end - start) / (1000 * 60 * 60 * 24)
+        const total_days = Math.floor(
+            (Date.UTC(
+                end.getFullYear(),
+                end.getMonth(),
+                end.getDate()
+            ) - Date.UTC(
+                start.getFullYear(),
+                start.getMonth(),
+                start.getDate()
+            )) / (1000 * 60 * 60 * 24)
         ) + 1;
 
-        const price_per_day = vehicle.price_per_day;
-        const total_price = total_days * price_per_day;
+        const total_price = total_days * booking.price_per_day;
 
         const [bookingResult] = await connection.query(`
             INSERT INTO bookings (

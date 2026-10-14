@@ -7,11 +7,35 @@ import Toast from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
 import LinkButton from "@/components/ui/LinkButton";
 import DataTable from "@/components/ui/DataTable";
+const inputClass =
+    "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
 export default function BookingsPage() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+        
+    const initialFilters = {
+        search: "",
+        status: "",
+        startDate: "",
+        endDate: "",
+        sortBy: "created_at",
+        sortOrder: "desc",
+    };
+
+    const [filters, setFilters] = useState(initialFilters);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+    });
+
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [selectedBookingId, setSelectedBookingId] = useState(null);
@@ -22,26 +46,69 @@ export default function BookingsPage() {
         type: "success",
         message: "",
     });
-
+    
     useEffect(() => {
+        let active = true;
+
         const loadBookings = async () => {
             try {
-                const response = await bookingService.getAll();
+                setLoading(true);
+                setError("");
+
+                const response = await bookingService.getAll({
+                    ...filters,
+                    page,
+                    limit,
+                });
+
+                if (!active) return;
 
                 setBookings(response.data?.data || []);
-                setError("");
+
+                setPagination(
+                    response.data?.pagination || {
+                        page,
+                        limit,
+                        total: 0,
+                        totalPages: 0,
+                    }
+                );
             } catch (error) {
+                if (!active) return;
+
+                setBookings([]);
                 setError(
                     error.response?.data?.message ||
                         "Gagal mengambil data booking."
                 );
             } finally {
-                setLoading(false);
+                if (active) {
+                    setLoading(false);
+                }
             }
         };
 
         loadBookings();
-    }, []);
+
+        return () => {
+            active = false;
+        };
+    }, [filters, page, limit, refreshKey]);
+    
+    const handleFilterChange = (name, value) => {
+        setFilters((previous) => ({
+            ...previous,
+            [name]: value,
+        }));
+
+        setPage(1);
+    };
+
+    const handleResetFilters = () => {
+        setFilters({ ...initialFilters });
+        setPage(1);
+        setLimit(10);
+    };
 
     const handleDelete = async () => {
         if (!selectedBookingId) {
@@ -54,11 +121,7 @@ export default function BookingsPage() {
 
             await bookingService.remove(selectedBookingId);
 
-            setBookings((prevBookings) =>
-                prevBookings.filter(
-                    (booking) => booking.id !== selectedBookingId
-                )
-            );
+            setRefreshKey((previous) => previous + 1);
 
             setShowDeleteDialog(false);
             setSelectedBookingId(null);
@@ -160,7 +223,7 @@ export default function BookingsPage() {
         {
             key: "no",
             label: "No",
-            render: (_, index) => index + 1,
+            render: (_, index) => (page - 1) * limit + index + 1,
         },
         {
             key: "user",
@@ -293,18 +356,199 @@ export default function BookingsPage() {
                     + Tambah Booking
                 </LinkButton>
             </div>
+            
+            <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="sm:col-span-2">
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Cari booking
+                        </label>
+                        <input
+                            type="text"
+                            className={inputClass}
+                            placeholder="Nama user, kendaraan, atau ID booking..."
+                            value={filters.search}
+                            onChange={(event) =>
+                                handleFilterChange("search", event.target.value)
+                            }
+                        />
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Status booking
+                        </label>
+                        <select
+                            className={inputClass}
+                            value={filters.status}
+                            onChange={(event) =>
+                                handleFilterChange("status", event.target.value)
+                            }
+                        >
+                            <option value="">Semua status</option>
+                            <option value="pending">Menunggu</option>
+                            <option value="confirmed">Dikonfirmasi</option>
+                            <option value="ongoing">Sedang Berlangsung</option>
+                            <option value="completed">Selesai</option>
+                            <option value="cancelled">Dibatalkan</option>
+                            <option value="rejected">Ditolak</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Data per halaman
+                        </label>
+                        <select
+                            className={inputClass}
+                            value={limit}
+                            onChange={(event) => {
+                                setLimit(Number(event.target.value));
+                                setPage(1);
+                            }}
+                        >
+                            <option value={10}>10 data</option>
+                            <option value={25}>25 data</option>
+                            <option value={50}>50 data</option>
+                            <option value={100}>100 data</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Tanggal mulai dari
+                        </label>
+                        <input
+                            type="date"
+                            className={inputClass}
+                            value={filters.startDate}
+                            max={filters.endDate || undefined}
+                            onChange={(event) =>
+                                handleFilterChange("startDate", event.target.value)
+                            }
+                        />
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Tanggal mulai sampai
+                        </label>
+                        <input
+                            type="date"
+                            className={inputClass}
+                            value={filters.endDate}
+                            min={filters.startDate || undefined}
+                            onChange={(event) =>
+                                handleFilterChange("endDate", event.target.value)
+                            }
+                        />
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Urutkan berdasarkan
+                        </label>
+                        <select
+                            className={inputClass}
+                            value={filters.sortBy}
+                            onChange={(event) =>
+                                handleFilterChange("sortBy", event.target.value)
+                            }
+                        >
+                            <option value="created_at">Tanggal dibuat</option>
+                            <option value="start_date">Tanggal mulai</option>
+                            <option value="total_price">Total harga</option>
+                            <option value="total_days">Lama sewa</option>
+                            <option value="user_name">Nama user</option>
+                            <option value="vehicle_name">Nama kendaraan</option>
+                            <option value="id">ID booking</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Urutan
+                        </label>
+                        <select
+                            className={inputClass}
+                            value={filters.sortOrder}
+                            onChange={(event) =>
+                                handleFilterChange("sortOrder", event.target.value)
+                            }
+                        >
+                            <option value="desc">Terbaru / terbesar</option>
+                            <option value="asc">Terlama / terkecil</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-gray-500">
+                        Total hasil:{" "}
+                        <span className="font-semibold text-gray-800">
+                            {pagination.total}
+                        </span>{" "}
+                        booking
+                    </p>
+
+                    <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                        Reset Filter
+                    </button>
+                </div>
+            </div>
 
             <div className="mt-6">
-                {error ? (
-                    <p className="text-sm text-red-500">
+                <DataTable
+                    columns={columns}
+                    data={bookings}
+                    loading={loading}
+                />
+
+                {error && (
+                    <p className="mt-3 text-sm text-red-600">
                         {error}
                     </p>
-                ) : (
-                    <DataTable
-                        columns={columns}
-                        data={bookings}
-                        loading={loading}
-                    />
+                )}
+
+                {!loading && !error && pagination.total > 0 && (
+                    <div className="mt-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-gray-600">
+                            Menampilkan{" "}
+                            {Math.min((page - 1) * limit + 1, pagination.total)}
+                            {"–"}
+                            {Math.min(page * limit, pagination.total)}
+                            {" dari "}
+                            {pagination.total} booking
+                        </p>
+
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={page <= 1}
+                                onClick={() => setPage((previous) => previous - 1)}
+                            >
+                                Sebelumnya
+                            </Button>
+
+                            <span className="whitespace-nowrap text-sm text-gray-600">
+                                Halaman {page} dari {pagination.totalPages}
+                            </span>
+
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={page >= pagination.totalPages}
+                                onClick={() => setPage((previous) => previous + 1)}
+                            >
+                                Berikutnya
+                            </Button>
+                        </div>
+                    </div>
                 )}
             </div>
 

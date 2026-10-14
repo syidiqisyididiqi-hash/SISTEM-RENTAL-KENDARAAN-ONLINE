@@ -1,7 +1,9 @@
+
 import api from "@/lib/axios";
 
 const bookingService = {
-    getAll: () => api.get("/bookings"),
+    getAll: (params = {}) =>
+        api.get("/bookings", { params }),
 
     getById: (id) => api.get(`/bookings/${id}`),
 

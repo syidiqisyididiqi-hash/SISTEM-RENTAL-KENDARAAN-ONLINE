@@ -1,16 +1,27 @@
 const bookingService = require('../services/bookingService');
 
+
 const getAllBookings = async (req, res) => {
     try {
-        const bookings = await bookingService.getAllBookings();
- 
+        const result = await bookingService.getAllBookings({
+            search: req.query.search || "",
+            status: req.query.status || "",
+            startDate: req.query.startDate || "",
+            endDate: req.query.endDate || "",
+            sortBy: req.query.sortBy || "created_at",
+            sortOrder: req.query.sortOrder || "desc",
+            page: req.query.page || 1,
+            limit: req.query.limit || 10
+        });
+
         res.json({
             success: true,
             message: 'Data booking berhasil diambil',
-            data: bookings
+            data: result.data,
+            pagination: result.pagination
         });
     } catch (error) {
-        res.status(500).json({
+        res.status(400).json({
             success: false,
             message: 'Gagal mengambil data booking',
             error: error.message
