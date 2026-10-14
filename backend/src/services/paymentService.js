@@ -1,10 +1,105 @@
 const pool = require("../config/database");
 
-const getAllPayments = async () => {
-    const [rows] = await pool.query(`
+const getAllPayments = async ({
+    search = "",
+    status = "",
+    paymentMethod = "",
+    startDate = "",
+    endDate = "",
+    sortBy = "created_at",
+    sortOrder = "desc",
+    page = 1,
+    limit = 10,
+} = {}) => {
+    const conditions = [];
+    const values = [];
+
+    if (search.trim()) {
+        conditions.push(`
+            (
+                CAST(p.id AS CHAR) LIKE ?
+                OR CAST(p.booking_id AS CHAR) LIKE ?
+                OR CAST(b.user_id AS CHAR) LIKE ?
+                OR u.name LIKE ?
+            )
+        `);
+
+        const keyword = `%${search.trim()}%`;
+
+        values.push(
+            keyword,
+            keyword,
+            keyword,
+            keyword
+        );
+    }
+
+    if (["pending", "paid", "rejected"].includes(status)) {
+        conditions.push("p.status = ?");
+        values.push(status);
+    }
+
+    if (["qris", "cash", "bank_transfer"].includes(paymentMethod)) {
+        conditions.push("p.payment_method = ?");
+        values.push(paymentMethod);
+    }
+
+    if (startDate) {
+        conditions.push("p.created_at >= ?");
+        values.push(`${startDate} 00:00:00`);
+    }
+
+    if (endDate) {
+        conditions.push("p.created_at < DATE_ADD(?, INTERVAL 1 DAY)");
+        values.push(endDate);
+    }
+
+    const whereClause = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
+    const allowedSortColumns = {
+        id: "p.id",
+        booking_id: "p.booking_id",
+        amount: "p.amount",
+        status: "p.status",
+        created_at: "p.created_at",
+        verified_at: "p.verified_at",
+    };
+
+    const sortColumn =
+        allowedSortColumns[sortBy] || "p.created_at";
+
+    const direction =
+        sortOrder.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+    const currentPage = Math.max(1, parseInt(page, 10) || 1);
+    const perPage = Math.min(
+        100,
+        Math.max(1, parseInt(limit, 10) || 10)
+    );
+    const offset = (currentPage - 1) * perPage;
+
+    const [countRows] = await pool.query(
+        `
+        SELECT COUNT(*) AS total
+        FROM payments p
+        JOIN bookings b ON b.id = p.booking_id
+        LEFT JOIN users u ON u.id = b.user_id
+        ${whereClause}
+        `,
+        values
+    );
+
+    const total = Number(countRows[0].total);
+
+    const [rows] = await pool.query(
+        `
         SELECT
             p.id,
             p.booking_id,
+            b.user_id,
+            u.name AS user_name,
             p.payment_method,
             p.amount,
             p.payment_proof,
@@ -13,10 +108,24 @@ const getAllPayments = async () => {
             p.created_at,
             p.updated_at
         FROM payments p
-        ORDER BY p.created_at DESC
-    `);
+        JOIN bookings b ON b.id = p.booking_id
+        LEFT JOIN users u ON u.id = b.user_id
+        ${whereClause}
+        ORDER BY ${sortColumn} ${direction}
+        LIMIT ? OFFSET ?
+        `,
+        [...values, perPage, offset]
+    );
 
-    return rows;
+    return {
+        data: rows,
+        pagination: {
+            page: currentPage,
+            limit: perPage,
+            total,
+            totalPages: Math.ceil(total / perPage),
+        },
+    };
 };
 
 const getPaymentById = async (id) => {

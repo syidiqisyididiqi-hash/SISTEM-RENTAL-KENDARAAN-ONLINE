@@ -4,15 +4,38 @@ const allowedPaymentMethods = ["qris", "cash", "bank_transfer"];
 
 const getAllPayments = async (req, res) => {
     try {
-        const payments = await paymentService.getAllPayments();
+        const {
+            search = "",
+            status = "",
+            paymentMethod = "",
+            startDate = "",
+            endDate = "",
+            sortBy = "created_at",
+            sortOrder = "desc",
+            page = 1,
+            limit = 10,
+        } = req.query;
+
+        const result = await paymentService.getAllPayments({
+            search,
+            status,
+            paymentMethod,
+            startDate,
+            endDate,
+            sortBy,
+            sortOrder,
+            page,
+            limit,
+        });
 
         res.status(200).json({
             success: true,
             message: "Data pembayaran berhasil diambil",
-            data: payments,
+            data: result.data,
+            pagination: result.pagination,
         });
     } catch (error) {
-        console.error(error);
+        console.error("Get all payments error:", error);
 
         res.status(500).json({
             success: false,

@@ -14,6 +14,26 @@ export default function PaymentsPage() {
     const [error, setError] = useState("");
     const [updatingId, setUpdatingId] = useState(null);
 
+    const [filters, setFilters] = useState({
+        search: "",
+        status: "",
+        paymentMethod: "",
+        startDate: "",
+        endDate: "",
+        sortBy: "created_at",
+        sortOrder: "desc",
+    });
+
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+    });
+
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [selectedPaymentId, setSelectedPaymentId] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
@@ -29,24 +49,59 @@ export default function PaymentsPage() {
     });
 
     useEffect(() => {
+        let active = true;
+
         const loadPayments = async () => {
+            setLoading(true);
+            setError("");
+
             try {
-                const response = await paymentService.getAll();
+                const response = await paymentService.getAll({
+                    ...filters,
+                    page,
+                    limit,
+                });
+
+                if (!active) return;
 
                 setPayments(response.data?.data || []);
-                setError("");
+
+                setPagination(
+                    response.data?.pagination || {
+                        page,
+                        limit,
+                        total: 0,
+                        totalPages: 0,
+                    }
+                );
             } catch (error) {
+                if (!active) return;
+
+                setPayments([]);
+                setPagination({
+                    page,
+                    limit,
+                    total: 0,
+                    totalPages: 0,
+                });
+
                 setError(
                     error.response?.data?.message ||
                         "Gagal mengambil data pembayaran."
                 );
             } finally {
-                setLoading(false);
+                if (active) {
+                    setLoading(false);
+                }
             }
         };
 
         loadPayments();
-    }, []);
+
+        return () => {
+            active = false;
+        };
+    }, [filters, page, limit]);
 
     const handleOpenStatusDialog = (id, status) => {
         setSelectedStatusPaymentId(id);
@@ -228,11 +283,35 @@ export default function PaymentsPage() {
         }
     };
 
+    const handleFilterChange = (key, value) => {
+        setFilters((current) => ({
+            ...current,
+            [key]: value,
+        }));
+
+        setPage(1);
+    };
+
+    const handleResetFilters = () => {
+        setFilters({
+            search: "",
+            status: "",
+            paymentMethod: "",
+            startDate: "",
+            endDate: "",
+            sortBy: "created_at",
+            sortOrder: "desc",
+        });
+
+        setPage(1);
+        setLimit(10);
+    };
+
     const columns = [
         {
             key: "no",
             label: "No",
-            render: (_, index) => index + 1,
+            render: (_, index) => (page - 1) * limit + index + 1,
         },
         {
             key: "booking_id",
@@ -387,17 +466,211 @@ export default function PaymentsPage() {
                 </LinkButton>
             </div>
 
-            <div className="mt-6">
-                {error ? (
-                    <p className="text-sm text-red-500">
-                        {error}
-                    </p>
-                ) : (
-                    <DataTable
-                        columns={columns}
-                        data={payments}
-                        loading={loading}
-                    />
+            <div className="mt-6 space-y-4">
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Cari pembayaran
+                            </label>
+
+                            <input
+                                type="text"
+                                value={filters.search}
+                                onChange={(e) =>
+                                    handleFilterChange("search", e.target.value)
+                                }
+                                placeholder="ID pembayaran, booking, atau nama..."
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Status pembayaran
+                            </label>
+
+                            <select
+                                value={filters.status}
+                                onChange={(e) =>
+                                    handleFilterChange("status", e.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                                <option value="">Semua status</option>
+                                <option value="pending">Menunggu</option>
+                                <option value="paid">Dibayar</option>
+                                <option value="rejected">Ditolak</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Metode pembayaran
+                            </label>
+
+                            <select
+                                value={filters.paymentMethod}
+                                onChange={(e) =>
+                                    handleFilterChange(
+                                        "paymentMethod",
+                                        e.target.value
+                                    )
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                                <option value="">Semua metode</option>
+                                <option value="qris">QRIS</option>
+                                <option value="cash">Tunai</option>
+                                <option value="bank_transfer">Transfer Bank</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Tanggal mulai
+                            </label>
+
+                            <input
+                                type="date"
+                                value={filters.startDate}
+                                max={filters.endDate || undefined}
+                                onChange={(e) =>
+                                    handleFilterChange("startDate", e.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Tanggal akhir
+                            </label>
+
+                            <input
+                                type="date"
+                                value={filters.endDate}
+                                min={filters.startDate || undefined}
+                                onChange={(e) =>
+                                    handleFilterChange("endDate", e.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Urutkan berdasarkan
+                            </label>
+
+                            <select
+                                value={`${filters.sortBy}:${filters.sortOrder}`}
+                                onChange={(e) => {
+                                    const [sortBy, sortOrder] =
+                                        e.target.value.split(":");
+
+                                    setFilters((current) => ({
+                                        ...current,
+                                        sortBy,
+                                        sortOrder,
+                                    }));
+
+                                    setPage(1);
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                                <option value="created_at:desc">
+                                    Tanggal terbaru
+                                </option>
+                                <option value="created_at:asc">
+                                    Tanggal terlama
+                                </option>
+                                <option value="amount:desc">
+                                    Nominal tertinggi
+                                </option>
+                                <option value="amount:asc">
+                                    Nominal terendah
+                                </option>
+                                <option value="id:desc">
+                                    ID terbesar
+                                </option>
+                                <option value="id:asc">
+                                    ID terkecil
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-gray-500">
+                            Total {pagination.total} pembayaran
+                        </p>
+
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleResetFilters}
+                        >
+                            Reset Filter
+                        </Button>
+                    </div>
+                </div>
+
+                {error && (
+                    <p className="text-sm text-red-500">{error}</p>
+                )}
+
+                <DataTable
+                    columns={columns}
+                    data={payments}
+                    loading={loading}
+                />
+
+                {!loading && !error && pagination.totalPages > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <span>Tampilkan</span>
+
+                            <select
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                                className="rounded-lg border border-gray-300 px-2 py-1.5"
+                            >
+                                <option value={10}>10</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                            </select>
+
+                            <span>data per halaman</span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm text-gray-600">
+                                Halaman {pagination.page} dari {pagination.totalPages}
+                            </span>
+
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={page <= 1}
+                                onClick={() => setPage((current) => current - 1)}
+                            >
+                                Sebelumnya
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={page >= pagination.totalPages}
+                                onClick={() => setPage((current) => current + 1)}
+                            >
+                                Berikutnya
+                            </Button>
+                        </div>
+                    </div>
                 )}
             </div>
 
