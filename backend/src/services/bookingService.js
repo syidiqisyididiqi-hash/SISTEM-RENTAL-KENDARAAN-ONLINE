@@ -258,11 +258,8 @@ const createBooking = async (data) => {
             throw new Error('Stok kendaraan habis');
         }
 
-        const nextStartDate = start_date || booking.start_date;
-        const nextEndDate = end_date || booking.end_date;
-
-        const start = new Date(nextStartDate);
-        const end = new Date(nextEndDate);
+        const start = new Date(`${start_date}T00:00:00`);
+const end = new Date(`${end_date}T00:00:00`);
 
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
             throw new Error('Tanggal booking tidak valid');
@@ -286,7 +283,8 @@ const createBooking = async (data) => {
             )) / (1000 * 60 * 60 * 24)
         ) + 1;
 
-        const total_price = total_days * booking.price_per_day;
+        const price_per_day = Number(vehicle.price_per_day);
+        const total_price = total_days * price_per_day;
 
         const [bookingResult] = await connection.query(`
             INSERT INTO bookings (
@@ -326,7 +324,7 @@ const createBooking = async (data) => {
             VALUES (?, ?, ?, ?, ?)
         `, [
             bookingId,
-            'bank_transfer',
+            'qris',
             null,
             total_price,
             'pending'
@@ -430,7 +428,7 @@ const updateBookingStatus = async (id, status) => {
         );
 
         const shouldRestoreStock =
-            !['cancelled', 'rejected'].includes(previousStatus) &&
+            ['pending', 'confirmed', 'ongoing'].includes(previousStatus) &&
             ['cancelled', 'rejected'].includes(status);
 
         if (shouldRestoreStock) {
@@ -499,34 +497,99 @@ const cancelUserBooking = async (id, userId) => {
     try {
         await connection.beginTransaction();
 
-        const [rows] = await connection.query(`
-            SELECT id, vehicle_id, status
-            FROM bookings
-            WHERE id = ? AND user_id = ?
-            FOR UPDATE
-        `, [id, userId]);
+        const [bookingRows] = await connection.query(
+            `SELECT id, vehicle_id, status
+             FROM bookings
+             WHERE id = ? AND user_id = ?
+             FOR UPDATE`,
+            [id, userId]
+        );
 
-        if (rows.length === 0) {
+        if (bookingRows.length === 0) {
             const error = new Error('Booking tidak ditemukan');
             error.statusCode = 404;
             throw error;
         }
 
-        const booking = rows[0];
+        const booking = bookingRows[0];
 
-        if (booking.status !== 'pending') {
-            const error = new Error('Hanya booking berstatus menunggu yang dapat dibatalkan');
+        if (!['pending', 'confirmed'].includes(booking.status)) {
+            const error = new Error(
+                'Booking ini tidak dapat dibatalkan'
+            );
             error.statusCode = 409;
             throw error;
         }
 
-        await connection.query(
-            `UPDATE bookings SET status = 'cancelled' WHERE id = ?`,
+        const [paymentRows] = await connection.query(
+            `SELECT id, status, verified_at, payment_proof
+            FROM payments
+            WHERE booking_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+            FOR UPDATE`,
             [id]
         );
 
+        const payment = paymentRows[0];
+
+        if (booking.status === 'confirmed') {
+            if (!payment || payment.status !== 'paid' || !payment.verified_at) {
+                const error = new Error(
+                    'Status pembayaran tidak valid untuk pembatalan'
+                );
+                error.statusCode = 409;
+                throw error;
+            }
+
+            const [timeRows] = await connection.query(
+                `SELECT TIMESTAMPDIFF(
+                    SECOND, verified_at, CURRENT_TIMESTAMP
+                ) AS elapsed_seconds
+                 FROM payments
+                 WHERE id = ?`,
+                [payment.id]
+            );
+
+            if (
+                timeRows[0].elapsed_seconds < 0 ||
+                timeRows[0].elapsed_seconds > 4 * 60 * 60
+            ) {
+                const error = new Error(
+                    'Batas pembatalan 4 jam sejak pembayaran dikonfirmasi telah berakhir'
+                );
+                error.statusCode = 409;
+                throw error;
+            }
+        }
+
         await connection.query(
-            `UPDATE vehicles SET stock = stock + 1 WHERE id = ?`,
+            `UPDATE bookings
+             SET status = 'cancelled'
+             WHERE id = ?`,
+            [id]
+        );
+
+        if (payment) {
+            const nextPaymentStatus =
+                payment.status === 'paid'
+                    ? 'refund_pending'
+                    : payment.status === 'pending'
+                        ? 'cancelled'
+                        : payment.status;
+
+            await connection.query(
+                `UPDATE payments
+                 SET status = ?
+                 WHERE id = ?`,
+                [nextPaymentStatus, payment.id]
+            );
+        }
+
+        await connection.query(
+            `UPDATE vehicles
+             SET stock = stock + 1
+             WHERE id = ?`,
             [booking.vehicle_id]
         );
 

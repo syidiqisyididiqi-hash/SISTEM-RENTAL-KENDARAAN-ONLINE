@@ -34,12 +34,21 @@ const getAllPayments = async ({
         );
     }
 
-    if (["pending", "paid", "rejected"].includes(status)) {
+    const allowedStatuses = [
+        "pending",
+        "paid",
+        "rejected",
+        "cancelled",
+        "refund_pending",
+        "refunded",
+    ];
+
+    if (allowedStatuses.includes(status)) {
         conditions.push("p.status = ?");
         values.push(status);
     }
 
-    if (["qris", "cash", "bank_transfer"].includes(paymentMethod)) {
+    if (["qris", "cash"].includes(paymentMethod)) {
         conditions.push("p.payment_method = ?");
         values.push(paymentMethod);
     }
@@ -248,9 +257,16 @@ const submitPaymentProof = async ({
             throw error;
         }
 
-        if (payment.payment_status === "paid") {
+        if (
+            [
+                "paid",
+                "cancelled",
+                "refund_pending",
+                "refunded",
+            ].includes(payment.payment_status)
+        ) {
             const error = new Error(
-                "Pembayaran booking ini sudah dikonfirmasi."
+                "Pembayaran ini tidak dapat diubah atau dikirim ulang."
             );
             error.statusCode = 409;
             throw error;
@@ -311,7 +327,15 @@ const updatePayment = async (id, data) => {
 };
 
 const updatePaymentStatus = async (id, status) => {
-    if (!["pending", "paid", "rejected"].includes(status)) {
+    if (
+        ![
+            "pending",
+            "paid",
+            "rejected",
+            "refund_pending",
+            "refunded",
+        ].includes(status)
+    ) {
         throw new Error("Status pembayaran tidak valid.");
     }
 
@@ -326,6 +350,7 @@ const updatePaymentStatus = async (id, status) => {
                 p.id,
                 p.booking_id,
                 p.status AS payment_status,
+                p.verified_at,
                 b.status AS booking_status,
                 b.vehicle_id
             FROM payments p
@@ -344,88 +369,146 @@ const updatePaymentStatus = async (id, status) => {
 
         const payment = paymentRows[0];
 
-        if (status === "paid") {
-            await connection.query(
-                `
-                UPDATE payments
-                SET
-                    status = ?,
-                    verified_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                `,
-                [status, id]
-            );
-
-            await connection.query(
-                `
-                UPDATE bookings
-                SET status = "confirmed"
-                WHERE id = ?
-                `,
-                [payment.booking_id]
+        if (
+            payment.payment_status === "paid" &&
+            ["pending", "rejected"].includes(status)
+        ) {
+            throw new Error(
+                "Pembayaran yang sudah dikonfirmasi tidak dapat dikembalikan ke status ini."
             );
         }
 
-        if (status === "rejected") {
-            await connection.query(
-                `
-                UPDATE payments
-                SET
-                    status = ?,
-                    verified_at = NULL
-                WHERE id = ?
-                `,
-                [status, id]
+        if (status === "refunded") {
+                if (
+            payment.payment_status !== "refund_pending" ||
+            payment.booking_status !== "cancelled"
+        ) {
+            throw new Error(
+                "Refund hanya dapat dikonfirmasi untuk booking yang dibatalkan dan sedang menunggu pengembalian."
             );
+        }
 
-            const shouldRestoreStock =
-                ![
+        await connection.query(
+            `
+            UPDATE payments
+            SET status = 'refunded'
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+    } else if (
+        status === "paid" &&
+        payment.payment_status === "refund_pending"
+    ) {
+        if (payment.booking_status !== "cancelled") {
+            throw new Error(
+                "Booking harus dibatalkan untuk menolak refund."
+            );
+        }
+
+        await connection.query(
+            `
+            UPDATE payments
+            SET status = 'paid'
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+    } else {
+        if (
+            ["cancelled", "completed", "rejected"].includes(
+                payment.booking_status
+            )
+        ) {
+            throw new Error(
+                "Pembayaran tidak dapat diubah karena booking sudah dibatalkan, ditolak, atau selesai."
+            );
+        }
+
+            if (status === "paid") {
+                await connection.query(
+                    `
+                    UPDATE payments
+                    SET
+                        status = 'paid',
+                        verified_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    `,
+                    [id]
+                );
+
+                await connection.query(
+                    `
+                    UPDATE bookings
+                    SET status = 'confirmed'
+                    WHERE id = ?
+                    `,
+                    [payment.booking_id]
+                );
+            }
+
+            if (status === "rejected") {
+                await connection.query(
+                    `
+                    UPDATE payments
+                    SET
+                        status = 'rejected',
+                        verified_at = NULL
+                    WHERE id = ?
+                    `,
+                    [id]
+                );
+
+                const shouldRestoreStock = ![
                     "cancelled",
                     "rejected",
                     "completed",
                 ].includes(payment.booking_status);
 
-            if (shouldRestoreStock) {
+                if (shouldRestoreStock) {
+                    await connection.query(
+                        `
+                        UPDATE vehicles
+                        SET stock = stock + 1
+                        WHERE id = ?
+                        `,
+                        [payment.vehicle_id]
+                    );
+                }
+
                 await connection.query(
                     `
-                    UPDATE vehicles
-                    SET stock = stock + 1
+                    UPDATE bookings
+                    SET status = 'rejected'
                     WHERE id = ?
                     `,
-                    [payment.vehicle_id]
+                    [payment.booking_id]
                 );
             }
 
-            await connection.query(
-                `
-                UPDATE bookings
-                SET status = "rejected"
-                WHERE id = ?
-                `,
-                [payment.booking_id]
-            );
-        }
+            if (status === "pending") {
+                await connection.query(
+                    `
+                    UPDATE payments
+                    SET
+                        status = 'pending',
+                        verified_at = NULL
+                    WHERE id = ?
+                    `,
+                    [id]
+                );
 
-        if (status === "pending") {
-            await connection.query(
-                `
-                UPDATE payments
-                SET
-                    status = ?,
-                    verified_at = NULL
-                WHERE id = ?
-                `,
-                [status, id]
-            );
-
-            await connection.query(
-                `
-                UPDATE bookings
-                SET status = "pending"
-                WHERE id = ?
-                `,
-                [payment.booking_id]
-            );
+                await connection.query(
+                    `
+                    UPDATE bookings
+                    SET status = 'pending'
+                    WHERE id = ?
+                    `,
+                    [payment.booking_id]
+                );
+            }
         }
 
         await connection.commit();
