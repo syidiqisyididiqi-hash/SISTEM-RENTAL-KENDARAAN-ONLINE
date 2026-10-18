@@ -1,6 +1,6 @@
 const paymentService = require("../services/paymentService");
 
-const allowedPaymentMethods = ["qris", "cash", "bank_transfer"];
+const allowedPaymentMethods = ["qris", "cash"];
 
 const getAllPayments = async (req, res) => {
     try {
@@ -254,7 +254,16 @@ const updatePaymentStatus = async (req, res) => {
             });
         }
 
-        if (!["pending", "paid", "rejected"].includes(status)) {
+        const allowedPaymentStatuses = [
+            "pending",
+            "paid",
+            "rejected",
+            "cancelled",
+            "refund_pending",
+            "refunded",
+        ];
+
+        if (!allowedPaymentStatuses.includes(status)) {
             return res.status(400).json({
                 success: false,
                 message: "Status pembayaran tidak valid",
@@ -269,12 +278,15 @@ const updatePaymentStatus = async (req, res) => {
             message: "Status pembayaran berhasil diperbarui",
             data: payment,
         });
-    } catch (error) {
-        console.error(error);
+        
+        } catch (error) {
+        console.error("Update payment status error:", error);
 
-        res.status(500).json({
+        res.status(error.statusCode || 500).json({
             success: false,
-            message: "Gagal memperbarui status pembayaran",
+            message:
+                error.message ||
+                "Gagal memperbarui status pembayaran",
         });
     }
 };
