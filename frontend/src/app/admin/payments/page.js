@@ -130,8 +130,10 @@ export default function PaymentsPage() {
                 type: "success",
                 message:
                     status === "paid"
-                        ? "Pembayaran berhasil diverifikasi."
-                        : "Pembayaran berhasil ditolak.",
+                        ? "Pembayaran berhasil diperbarui."
+                        : status === "refunded"
+                            ? "Pengembalian dana berhasil dikonfirmasi."
+                            : "Pembayaran berhasil ditolak.",
             });
         } catch (error) {
             setToast({
@@ -166,10 +168,18 @@ export default function PaymentsPage() {
             setShowDeleteDialog(false);
             setSelectedPaymentId(null);
 
+            const statusMessages = {
+                paid: "Pembayaran berhasil diverifikasi.",
+                rejected: "Pembayaran berhasil ditolak.",
+                refunded: "Pengembalian dana berhasil dikonfirmasi.",
+            };
+
             setToast({
                 open: true,
                 type: "success",
-                message: "Pembayaran berhasil dihapus.",
+                message:
+                    statusMessages[status] ||
+                    "Status pembayaran berhasil diperbarui.",
             });
         } catch (error) {
             const message =
@@ -249,6 +259,15 @@ export default function PaymentsPage() {
             case "rejected":
                 return "bg-red-50 text-red-600";
 
+            case "cancelled":
+                return "bg-gray-100 text-gray-600";
+
+            case "refund_pending":
+                return "bg-orange-50 text-orange-600";
+
+            case "refunded":
+                return "bg-blue-50 text-blue-600";
+
             default:
                 return "bg-gray-100 text-gray-600";
         }
@@ -264,6 +283,15 @@ export default function PaymentsPage() {
 
             case "rejected":
                 return "Ditolak";
+
+            case "cancelled":
+                return "Dibatalkan";
+
+            case "refund_pending":
+                return "Pengembalian Diproses";
+
+            case "refunded":
+                return "Pengembalian Berhasil";
 
             default:
                 return status || "-";
@@ -393,32 +421,32 @@ export default function PaymentsPage() {
             label: "Aksi",
             render: (payment) => (
                 <div className="flex gap-2 whitespace-nowrap">
-                    <LinkButton
-                        href={`/admin/payments/edit/${payment.id}`}
-                    >
-                        Edit
-                    </LinkButton>
+                    {!["refund_pending", "refunded"].includes(payment.status) && (
+                    <>
+                        <LinkButton
+                            href={`/admin/payments/edit/${payment.id}`}
+                        >
+                            Edit
+                        </LinkButton>
 
-                    <Button
-                        type="button"
-                        variant="danger"
-                        onClick={() => {
-                            setSelectedPaymentId(payment.id);
-                            setShowDeleteDialog(true);
-                        }}
-                    >
-                        Hapus
-                    </Button>
-
+                        <Button
+                            type="button"
+                            variant="danger"
+                            onClick={() => {
+                                setSelectedPaymentId(payment.id);
+                                setShowDeleteDialog(true);
+                            }}
+                        >
+                            Hapus
+                        </Button>
+                    </>
+)}
                     {payment.status === "pending" && (
                         <>
                             <Button
                                 type="button"
                                 onClick={() =>
-                                    handleOpenStatusDialog(
-                                        payment.id,
-                                        "paid"
-                                    )
+                                    handleOpenStatusDialog(payment.id, "paid")
                                 }
                                 disabled={updatingId === payment.id}
                             >
@@ -429,10 +457,7 @@ export default function PaymentsPage() {
                                 type="button"
                                 variant="danger"
                                 onClick={() =>
-                                    handleOpenStatusDialog(
-                                        payment.id,
-                                        "rejected"
-                                    )
+                                    handleOpenStatusDialog(payment.id, "rejected")
                                 }
                                 disabled={updatingId === payment.id}
                             >
@@ -440,6 +465,31 @@ export default function PaymentsPage() {
                             </Button>
                         </>
                     )}
+
+                    {payment.status === "refund_pending" && (
+                    <>
+                        <Button
+                            type="button"
+                            onClick={() =>
+                                handleOpenStatusDialog(payment.id, "refunded")
+                            }
+                            disabled={updatingId === payment.id}
+                        >
+                            Konfirmasi Refund
+                        </Button>
+
+                        <Button
+                            type="button"
+                            variant="danger"
+                            onClick={() =>
+                                handleOpenStatusDialog(payment.id, "paid")
+                            }
+                            disabled={updatingId === payment.id}
+                        >
+                            Batalkan Refund
+                        </Button>
+                    </>
+                )}
                 </div>
             ),
         },
@@ -497,10 +547,13 @@ export default function PaymentsPage() {
                                 }
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                             >
-                                <option value="">Semua status</option>
-                                <option value="pending">Menunggu</option>
-                                <option value="paid">Dibayar</option>
-                                <option value="rejected">Ditolak</option>
+                            <option value="">Semua status</option>
+                            <option value="pending">Menunggu</option>
+                            <option value="paid">Dibayar</option>
+                            <option value="rejected">Ditolak</option>
+                            <option value="cancelled">Dibatalkan</option>
+                            <option value="refund_pending">Menunggu Refund</option>
+                            <option value="refunded">Dana Dikembalikan</option>
                             </select>
                         </div>
 
@@ -522,7 +575,6 @@ export default function PaymentsPage() {
                                 <option value="">Semua metode</option>
                                 <option value="qris">QRIS</option>
                                 <option value="cash">Tunai</option>
-                                <option value="bank_transfer">Transfer Bank</option>
                             </select>
                         </div>
 
@@ -694,24 +746,31 @@ export default function PaymentsPage() {
             <ConfirmDialog
                 open={showStatusDialog}
                 type={
-                    selectedStatus === "paid"
+                    selectedStatus === "paid" ||
+                    selectedStatus === "refunded"
                         ? "success"
                         : "danger"
                 }
                 title={
                     selectedStatus === "paid"
-                        ? "Terima Pembayaran?"
-                        : "Tolak Pembayaran?"
+                        ? "Batalkan Proses Refund?"
+                        : selectedStatus === "refunded"
+                            ? "Konfirmasi Refund?"
+                            : "Tolak Pembayaran?"
                 }
                 description={
                     selectedStatus === "paid"
-                        ? "Apakah kamu yakin ingin menerima dan memverifikasi pembayaran ini?"
-                        : "Apakah kamu yakin ingin menolak pembayaran ini?"
+                        ? "Apakah kamu yakin ingin membatalkan proses refund dan mengembalikan status pembayaran menjadi Dibayar?"
+                        : selectedStatus === "refunded"
+                            ? "Pastikan dana sudah benar-benar dikembalikan kepada pengguna sebelum mengonfirmasi refund."
+                            : "Apakah kamu yakin ingin menolak pembayaran ini?"
                 }
                 confirmText={
                     selectedStatus === "paid"
-                        ? "Ya, Terima"
-                        : "Ya, Tolak"
+                        ? "Ya, Batalkan Refund"
+                        : selectedStatus === "refunded"
+                            ? "Ya, Konfirmasi Refund"
+                            : "Ya, Tolak"
                 }
                 cancelText="Batal"
                 onConfirm={async () => {

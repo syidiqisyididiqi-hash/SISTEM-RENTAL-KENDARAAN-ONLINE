@@ -29,7 +29,7 @@ export default function EditPaymentPage() {
 
     const [form, setForm] = useState({
         booking_id: "",
-        payment_method: "bank_transfer",
+        payment_method: "qris",
         amount: "",
         payment_proof: "",
         status: "pending",
@@ -74,8 +74,8 @@ export default function EditPaymentPage() {
 
                 setForm({
                     booking_id: payment.booking_id || "",
-                    payment_method: payment.payment_method || "bank_transfer",
-                    amount: payment.amount || "",
+                    payment_method: payment.payment_method || "qris",
+                    amount: payment.amount ?? "",
                     payment_proof: payment.payment_proof || "",
                     status: payment.status || "pending",
                 });
@@ -171,11 +171,8 @@ export default function EditPaymentPage() {
             setError("");
 
             await paymentService.update(id, {
-                booking_id: Number(form.booking_id),
                 payment_method: form.payment_method,
                 amount: Number(form.amount),
-                payment_proof: form.payment_proof || null,
-                status: form.status,
             });
 
             setShowUpdateDialog(false);
@@ -304,7 +301,7 @@ export default function EditPaymentPage() {
                                         required
                                         className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
                                     >
-                                        <option value="bank_transfer">Bank Transfer</option>
+                                        <option value="qris">QRIS</option>
                                         <option value="cash">Cash</option>
                                     </select>
                                 </div>
@@ -348,17 +345,21 @@ export default function EditPaymentPage() {
                                 </label>
                                 <div className="relative">
                                     <BadgeCheck className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                    <select
-                                        name="status"
-                                        value={form.status}
-                                        onChange={handleChange}
-                                        required
-                                        className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-3 focus:ring-blue-100"
-                                    >
-                                        <option value="pending">Menunggu</option>
-                                        <option value="paid">Dibayar</option>
-                                        <option value="rejected">Ditolak</option>
-                                    </select>
+                                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700">
+                                        {form.status === "pending"
+                                            ? "Menunggu"
+                                            : form.status === "paid"
+                                                ? "Dibayar"
+                                                : form.status === "rejected"
+                                                    ? "Ditolak"
+                                                    : form.status === "cancelled"
+                                                        ? "Dibatalkan"
+                                                        : form.status === "refund_pending"
+                                                            ? "Menunggu Refund"
+                                                            : form.status === "refunded"
+                                                                ? "Dana Dikembalikan"
+                                                                : form.status || "-"}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -390,9 +391,11 @@ export default function EditPaymentPage() {
                         <div className="flex items-center justify-between gap-3">
                             <span className="text-gray-500">Metode</span>
                             <span className="text-right font-medium text-gray-800">
-                                {form.payment_method === "bank_transfer"
-                                    ? "Bank Transfer"
-                                    : "Cash"}
+                                {form.payment_method === "qris"
+                                ? "QRIS"
+                                : form.payment_method === "cash"
+                                    ? "Cash"
+                                    : "-"}
                             </span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
@@ -402,15 +405,29 @@ export default function EditPaymentPage() {
                                     form.status === "paid"
                                         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                         : form.status === "rejected"
-                                          ? "border-rose-200 bg-rose-50 text-rose-700"
-                                          : "border-amber-200 bg-amber-50 text-amber-700"
+                                            ? "border-rose-200 bg-rose-50 text-rose-700"
+                                            : form.status === "cancelled"
+                                                ? "border-gray-200 bg-gray-100 text-gray-700"
+                                                : form.status === "refund_pending"
+                                                    ? "border-orange-200 bg-orange-50 text-orange-700"
+                                                    : form.status === "refunded"
+                                                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                                                        : "border-amber-200 bg-amber-50 text-amber-700"
                                 }`}
                             >
-                                {form.status === "paid"
-                                    ? "Dibayar"
-                                    : form.status === "rejected"
-                                      ? "Ditolak"
-                                      : "Menunggu"}
+                                {form.status === "pending"
+                                    ? "Menunggu"
+                                    : form.status === "paid"
+                                        ? "Dibayar"
+                                        : form.status === "rejected"
+                                            ? "Ditolak"
+                                            : form.status === "cancelled"
+                                                ? "Dibatalkan"
+                                                : form.status === "refund_pending"
+                                                    ? "Menunggu Refund"
+                                                    : form.status === "refunded"
+                                                        ? "Dana Dikembalikan"
+                                                        : form.status || "-"}
                             </span>
                         </div>
 
