@@ -30,9 +30,12 @@ import Button from "@/components/ui/Button";
     };
 
     const paymentStatusLabels = {
-        pending: "Menunggu pembayaran",
-        paid: "Sudah dibayar",
-        rejected: "Pembayaran ditolak",
+        pending: "Menunggu Pembayaran",
+        paid: "Sudah Dibayar",
+        rejected: "Pembayaran Ditolak",
+        cancelled: "Dibatalkan",
+        refund_pending: "Pengembalian Diproses",
+        refunded: "Pengembalian Berhasil",
     };
 
     const paymentMethodLabels = {
@@ -173,6 +176,13 @@ import Button from "@/components/ui/Button";
                 response.data?.data || {
                     ...booking,
                     status: "cancelled",
+                    payment_status:
+                        booking.payment_status === "paid" ||
+                        (booking.payment_status === "pending" && booking.payment_proof)
+                            ? "refund_pending"
+                            : booking.payment_status === "pending"
+                                ? "cancelled"
+                                : booking.payment_status,
                 }
             );
 
@@ -242,11 +252,26 @@ import Button from "@/components/ui/Button";
                         Detail Booking
                     </h1>
                 </div>
-                <span
-                    className={`inline-flex w-fit rounded-full px-3 py-1.5 text-sm font-medium ${statusStyle(booking.status)}`}
-                >
-                    {statusLabels[booking.status] || booking.status}
-                </span>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <span
+                        className={`inline-flex w-fit rounded-full px-3 py-1.5 text-sm font-medium ${statusStyle(booking.status)}`}
+                    >
+                        {statusLabels[booking.status] || booking.status}
+                    </span>
+
+                    {["refund_pending", "refunded"].includes(booking.payment_status) && (
+                        <span
+                            className={`inline-flex w-fit rounded-full px-3 py-1.5 text-sm font-medium ${
+                                booking.payment_status === "refunded"
+                                    ? "bg-green-50 text-green-700"
+                                    : "bg-amber-50 text-amber-700"
+                            }`}
+                        >
+                            {paymentStatusLabels[booking.payment_status]}
+                        </span>
+                    )}
+                </div>
             </header>
 
             {notice && (
@@ -406,15 +431,6 @@ import Button from "@/components/ui/Button";
                                 >
                                     Lihat bukti pembayaran
                                 </button>
-
-                                <a
-                                    href={getImageUrl(booking.payment_proof)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="ml-3 inline-flex text-sm font-medium text-gray-600 hover:text-blue-700 hover:underline"
-                                >
-                                    Buka tab baru
-                                </a>
                             </div>
                         )}
 
@@ -467,9 +483,10 @@ import Button from "@/components/ui/Button";
                             </div>
                         )}
                     </div>
-                    
+                                        
                     {booking.status === "pending" &&
-                        booking.payment_status !== "paid" && (
+                        booking.payment_status === "pending" &&
+                        !booking.payment_proof && (
                             <Button
                                 type="button"
                                 onClick={() =>
@@ -482,7 +499,7 @@ import Button from "@/components/ui/Button";
                             </Button>
                         )}
 
-                        {booking.status === "pending" && (
+                        {["pending", "confirmed"].includes(booking.status) && (
                             <Button
                                 type="button"
                                 variant="danger"

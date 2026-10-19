@@ -319,12 +319,28 @@ function PaymentPage() {
             .join(" ") ||
         "Kendaraan";
 
-    const totalPrice =
+   const totalPrice =
         Number(
             booking.total_price ??
                 booking.total_amount ??
                 booking.amount
         ) || 0;
+
+    const canSubmitPayment =
+        booking.status === "pending" &&
+        booking.payment_status === "pending" &&
+        !booking.payment_proof;
+
+    const paymentStatusLabels = {
+        pending: "Menunggu Verifikasi",
+        paid: "Lunas",
+        rejected: "Ditolak",
+        cancelled: "Dibatalkan",
+        refund_pending: "Pengembalian Diproses",
+        refunded: "Pengembalian Berhasil",
+    };
+
+    const isPaymentLocked = !canSubmitPayment;
 
     return (
         <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -374,7 +390,41 @@ function PaymentPage() {
             )}
 
             <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-                <form onSubmit={handleSubmit} className="space-y-6">
+                {!canSubmitPayment && (
+                <div
+                    role="status"
+                    className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+                >
+                    <p className="font-semibold">
+                        Status Pembayaran:{" "}
+                        {paymentStatusLabels[booking.payment_status] ||
+                            booking.payment_status ||
+                            "Tidak diketahui"}
+                    </p>
+
+                    <p className="mt-1">
+                        {booking.status === "cancelled"
+                            ? booking.payment_status === "refund_pending"
+                                ? "Booking dibatalkan. Pengembalian dana sedang diproses atau menunggu pemeriksaan admin."
+                                : booking.payment_status === "refunded"
+                                    ? "Dana telah dikembalikan."
+                                    : "Booking telah dibatalkan. Pembayaran baru tidak dapat dikirim."
+                            : booking.payment_proof
+                                ? "Bukti pembayaran sudah dikirim. Silakan tunggu verifikasi admin."
+                                : "Pembayaran tidak dapat dilakukan untuk status booking ini."}
+                    </p>
+
+                    <Link
+                        href={`/user/bookings/${booking.id}`}
+                        className="mt-3 inline-flex items-center gap-2 font-semibold underline"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Kembali ke detail booking
+                    </Link>
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
                     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                         <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:p-6">
                             <div className="relative h-24 w-full shrink-0 overflow-hidden rounded-xl bg-gray-50 ring-1 ring-gray-900/5 sm:w-32">
@@ -471,6 +521,7 @@ function PaymentPage() {
                                         onChange={(event) =>
                                             setPaymentMethod(event.target.value)
                                         }
+                                        disabled={isPaymentLocked}
                                         className="sr-only"
                                     />
 
@@ -538,6 +589,7 @@ function PaymentPage() {
                         </section>
                     )}
 
+                    {canSubmitPayment && (
                     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
                         <h2 className="text-base font-bold text-gray-900">
                             Bukti Pembayaran
@@ -659,6 +711,7 @@ function PaymentPage() {
                             )}
                         </button>
                     </section>
+                    )}
                 </form>
 
                 <aside className="h-fit space-y-4">
