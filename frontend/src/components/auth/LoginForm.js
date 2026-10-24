@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import authService from "@/services/authService";
+import Button from "@/components/ui/Button";
+import { useCallback, useState } from "react";
 
 export default function LoginForm() {
     const router = useRouter();
@@ -16,6 +17,8 @@ export default function LoginForm() {
 
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
+
     const notice =
         searchParams.get("message") === "login-required"
             ? "Silakan login terlebih dahulu untuk melakukan pemesanan."
@@ -33,6 +36,13 @@ export default function LoginForm() {
             ...prev,
             [name]: value,
         }));
+
+        setErrors((prev) => ({
+            ...prev,
+            [name]: false,
+        }));
+
+        setError("");
     };
 
     const handleSubmit = async (e) => {
@@ -40,7 +50,14 @@ export default function LoginForm() {
 
         setError("");
 
-        if (!formData.email || !formData.password) {
+        const newErrors = {
+            email: !formData.email.trim(),
+            password: !formData.password,
+        };
+
+        setErrors(newErrors);
+
+        if (Object.values(newErrors).some(Boolean)) {
             setError("Email dan password wajib diisi.");
             return;
         }
@@ -131,7 +148,11 @@ export default function LoginForm() {
                         value={formData.email}
                         onChange={handleChange}
                         placeholder="Masukkan email"
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition ${
+                        errors.email
+                            ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    }`}
                     />
                 </div>
 
@@ -150,7 +171,11 @@ export default function LoginForm() {
                         value={formData.password}
                         onChange={handleChange}
                         placeholder="Masukkan password"
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition ${
+                        errors.password
+                            ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    }`}
                     />
                 </div>
 
@@ -172,13 +197,15 @@ export default function LoginForm() {
                     </button>
                 </div>
 
-                <button
+                <Button
                     type="submit"
-                    disabled={loading}
-                    className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    loading={loading}
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
                 >
-                    {loading ? "Memproses..." : "Login"}
-                </button>
+                    Login
+                </Button>
             </form>
 
             <div className="mt-6 text-center">

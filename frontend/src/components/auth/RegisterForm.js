@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import authService from "@/services/authService";
+import Button from "@/components/ui/Button";
+import Toast from "@/components/ui/Toast";
+import { useState, useCallback } from "react";
 
 export default function RegisterForm() {
     const [formData, setFormData] = useState({
@@ -17,37 +19,73 @@ export default function RegisterForm() {
 
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
+
+    const [toast, setToast] = useState({
+        open: false,
+        type: "success",
+        message: "",
+    });
+
+    const closeToast = useCallback(() => {
+        setToast((prev) => ({
+            ...prev,
+            open: false,
+        }));
+    }, []);
+
     const router = useRouter();
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+       const { name, value } = e.target;
 
         setFormData((prev) => ({
             ...prev,
             [name]: value,
         }));
+
+        setErrors((prev) => ({
+            ...prev,
+            [name]: false,
+        }));
+
+        setError("");
     };
     
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
 
-        if (
-            !formData.name.trim() ||
-            !formData.email.trim() ||
-            !formData.password ||
-            !formData.confirmPassword
-        ) {
+        const newErrors = {
+            name: !formData.name.trim(),
+            email: !formData.email.trim(),
+            password: !formData.password,
+            confirmPassword: !formData.confirmPassword,
+        };
+
+        setErrors(newErrors);
+
+        if (Object.values(newErrors).some(Boolean)) {
             setError("Field wajib harus diisi.");
             return;
         }
 
         if (formData.password.length < 6) {
+            setErrors((prev) => ({
+                ...prev,
+                password: true,
+            }));
+
             setError("Password minimal 6 karakter.");
             return;
         }
 
         if (formData.password !== formData.confirmPassword) {
+            setErrors((prev) => ({
+                ...prev,
+                confirmPassword: true,
+            }));
+
             setError("Konfirmasi password tidak sama.");
             return;
         }
@@ -59,32 +97,54 @@ export default function RegisterForm() {
                 name: formData.name.trim(),
                 email: formData.email.trim(),
                 phone: formData.phone.trim(),
+                address: formData.address.trim(),
                 password: formData.password,
             });
 
             if (response.data.success) {
-                alert(response.data.message || "Registrasi berhasil.");
-                router.push("/login");
+                setToast({
+                    open: true,
+                    type: "success",
+                    message: response.data.message || "Registrasi berhasil.",
+                });
+
+                setTimeout(() => {
+                    router.push("/login");
+                }, 1500);
             } else {
-                setError(response.data.message || "Registrasi gagal.");
+                setToast({
+                    open: true,
+                    type: "error",
+                    message: response.data.message || "Registrasi gagal.",
+                });
             }
+
         } catch (error) {
-            setError(
+            const message =
                 error.response?.data?.message ||
-                "Registrasi gagal. Periksa koneksi ke backend."
-            );
+                "Registrasi gagal. Periksa koneksi ke backend.";
+
+            setToast({
+                open: true,
+                type: "error",
+                message,
+            });
         } finally {
             setLoading(false);
         }
     };
 
     return (
+        <>
+         <Toast
+            open={toast.open}
+            type={toast.type}
+            message={toast.message}
+            onClose={closeToast}
+        />
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-slate-200">
             
             <div className="mb-8 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600 text-xl font-bold text-white">
-                    RK
-                </div>
 
                 <h1 className="text-2xl font-bold text-slate-900">
                     Buat Akun
@@ -121,7 +181,11 @@ export default function RegisterForm() {
                         value={formData.name}
                         onChange={handleChange}
                         placeholder="Masukkan nama lengkap"
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                       className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition ${
+                            errors.confirmPassword
+                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        }`}
                     />
                 </div>
 
@@ -140,10 +204,13 @@ export default function RegisterForm() {
                         value={formData.email}
                         onChange={handleChange}
                         placeholder="Masukkan email"
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition ${
+                            errors.email
+                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        }`}                    
                     />
                 </div>
-
 
                 <div>
                     <label
@@ -198,8 +265,12 @@ export default function RegisterForm() {
                         value={formData.password}
                         onChange={handleChange}
                         placeholder="Minimal 6 karakter"
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
+                        className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition ${
+                            errors.password
+                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        }`}
+                />
                 </div>
 
                 <div>
@@ -217,20 +288,26 @@ export default function RegisterForm() {
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         placeholder="Ulangi password"
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition ${
+                            errors.confirmPassword
+                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        }`}
                     />
                 </div>
 
-<button
-    type="submit"
-    disabled={loading}
-    className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
->
-    {loading ? "Memproses..." : "Register"}
-</button>
+                <Button
+                    type="submit"
+                    loading={loading}
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                >
+                    Register
+                </Button>
+                
             </form>
 
-            {/* Login */}
             <div className="mt-6 text-center">
                 <p className="text-sm text-slate-500">
                     Sudah punya akun?{" "}
@@ -242,6 +319,8 @@ export default function RegisterForm() {
                     </Link>
                 </p>
             </div>
+
         </div>
+        </>
     );
 }
