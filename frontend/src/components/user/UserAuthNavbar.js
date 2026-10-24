@@ -113,8 +113,6 @@ export default function UserAuthNavbar() {
         sessionStorage.removeItem("token");
         sessionStorage.removeItem("user");
 
-        window.dispatchEvent(new Event("auth-change"));
-
         router.replace("/login");
     };
 

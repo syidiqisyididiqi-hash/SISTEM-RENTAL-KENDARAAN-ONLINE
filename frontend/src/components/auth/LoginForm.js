@@ -53,8 +53,8 @@ export default function LoginForm() {
                 formData.password
             );
 
-            const token = response.data.token;
-            const user = response.data.user;
+            const token = response.data.data.token;
+            const user = response.data.data.user;
 
             if (!token || !user) {
                 setError("Data login tidak lengkap.");

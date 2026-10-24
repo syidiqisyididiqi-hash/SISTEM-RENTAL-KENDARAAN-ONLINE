@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import authService from "@/services/authService";
 
 export default function RegisterForm() {
     const [formData, setFormData] = useState({
@@ -14,6 +16,8 @@ export default function RegisterForm() {
     });
 
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const router = useRouter();
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -23,15 +27,14 @@ export default function RegisterForm() {
             [name]: value,
         }));
     };
-
-    const handleSubmit = (e) => {
+    
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
         setError("");
 
         if (
-            !formData.name ||
-            !formData.email ||
+            !formData.name.trim() ||
+            !formData.email.trim() ||
             !formData.password ||
             !formData.confirmPassword
         ) {
@@ -40,36 +43,44 @@ export default function RegisterForm() {
         }
 
         if (formData.password.length < 6) {
-            setError(
-                "Password minimal 6 karakter."
-            );
+            setError("Password minimal 6 karakter.");
             return;
         }
 
-        if (
-            formData.password !==
-            formData.confirmPassword
-        ) {
-            setError(
-                "Konfirmasi password tidak sama."
-            );
+        if (formData.password !== formData.confirmPassword) {
+            setError("Konfirmasi password tidak sama.");
             return;
         }
 
-        console.log(
-            "Register data:",
-            formData
-        );
+        try {
+            setLoading(true);
 
-        // Sementara frontend saja
-        alert(
-            "Registrasi berhasil (dummy frontend)."
-        );
+            const response = await authService.register({
+                name: formData.name.trim(),
+                email: formData.email.trim(),
+                phone: formData.phone.trim(),
+                password: formData.password,
+            });
+
+            if (response.data.success) {
+                alert(response.data.message || "Registrasi berhasil.");
+                router.push("/login");
+            } else {
+                setError(response.data.message || "Registrasi gagal.");
+            }
+        } catch (error) {
+            setError(
+                error.response?.data?.message ||
+                "Registrasi gagal. Periksa koneksi ke backend."
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="rounded-2xl bg-white p-8 shadow-sm border border-slate-200">
-            {/* Header */}
+            
             <div className="mb-8 text-center">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600 text-xl font-bold text-white">
                     RK
@@ -84,19 +95,17 @@ export default function RegisterForm() {
                 </p>
             </div>
 
-            {/* Error */}
+            
             {error && (
                 <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                     {error}
                 </div>
             )}
 
-            {/* Form */}
             <form
                 onSubmit={handleSubmit}
                 className="space-y-4"
             >
-                {/* Name */}
                 <div>
                     <label
                         htmlFor="name"
@@ -116,8 +125,7 @@ export default function RegisterForm() {
                     />
                 </div>
 
-                {/* Email */}
-                <div>
+             <div>
                     <label
                         htmlFor="email"
                         className="mb-2 block text-sm font-medium text-slate-700"
@@ -136,7 +144,7 @@ export default function RegisterForm() {
                     />
                 </div>
 
-                {/* Phone */}
+
                 <div>
                     <label
                         htmlFor="phone"
@@ -156,7 +164,6 @@ export default function RegisterForm() {
                     />
                 </div>
 
-                {/* Address */}
                 <div>
                     <label
                         htmlFor="address"
@@ -176,7 +183,6 @@ export default function RegisterForm() {
                     />
                 </div>
 
-                {/* Password */}
                 <div>
                     <label
                         htmlFor="password"
@@ -196,7 +202,6 @@ export default function RegisterForm() {
                     />
                 </div>
 
-                {/* Confirm Password */}
                 <div>
                     <label
                         htmlFor="confirmPassword"
@@ -216,13 +221,13 @@ export default function RegisterForm() {
                     />
                 </div>
 
-                {/* Button */}
-                <button
-                    type="submit"
-                    className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                    Register
-                </button>
+<button
+    type="submit"
+    disabled={loading}
+    className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+>
+    {loading ? "Memproses..." : "Register"}
+</button>
             </form>
 
             {/* Login */}
