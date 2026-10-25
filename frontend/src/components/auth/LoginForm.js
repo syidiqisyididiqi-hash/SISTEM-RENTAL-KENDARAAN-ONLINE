@@ -80,6 +80,8 @@ export default function LoginForm() {
 
             sessionStorage.setItem("token", token);
             sessionStorage.setItem("user", JSON.stringify(user));
+            sessionStorage.setItem("loginSuccess", "true");
+
             window.dispatchEvent(new Event("auth-change"));
 
             const role = user.role?.toLowerCase();

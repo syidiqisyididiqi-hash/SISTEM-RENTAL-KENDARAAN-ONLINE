@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import adminDashboardService from "@/services/adminDashboardService";
+import Toast from "@/components/ui/Toast";
 
 function Summary({ title, data, totalCount }) {
     return (
@@ -54,6 +55,11 @@ export default function AdminDashboardPage() {
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [toast, setToast] = useState({
+        open: false,
+        type: "success",
+        message: "",
+    });
 
     const fetchDashboardData = useCallback(() => {
         return adminDashboardService
@@ -73,6 +79,18 @@ export default function AdminDashboardPage() {
     };
 
     useEffect(() => {
+        const loginSuccess = sessionStorage.getItem("loginSuccess");
+
+        if (loginSuccess === "true") {
+            sessionStorage.removeItem("loginSuccess");
+
+            setToast({
+                open: true,
+                type: "success",
+                message: "Login berhasil. Selamat datang di Dashboard Admin!",
+            });
+        }
+
         fetchDashboardData();
     }, [fetchDashboardData]);
 
@@ -166,6 +184,15 @@ export default function AdminDashboardPage() {
                     </svg>
                     Coba Lagi
                 </button>
+
+                <Toast
+                    open={toast.open}
+                    type={toast.type}
+                    message={toast.message}
+                    onClose={() =>
+                        setToast((prev) => ({ ...prev, open: false }))
+                    }
+                />
             </div>
         );
     }
@@ -310,28 +337,33 @@ export default function AdminDashboardPage() {
                         </span>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[650px] text-left text-sm">
-                            <thead className="bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                                <tr>
-                                    <th className="px-6 py-3.5">ID</th>
-                                    <th className="px-6 py-3.5">User</th>
-                                    <th className="px-6 py-3.5">Kendaraan</th>
-                                    <th className="px-6 py-3.5">Periode</th>
-                                    <th className="px-6 py-3.5">Total</th>
-                                    <th className="px-6 py-3.5">Status</th>
-                                </tr>
-                            </thead>
-
-                            <tbody className="divide-y divide-slate-100 text-slate-700">
-                                {bookings.length === 0 ? (
+                    {bookings.length === 0 ? (
+                  
+                        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3">
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2" />
+                                </svg>
+                            </div>
+                            <p className="text-sm font-medium text-slate-700">Belum ada data booking terbaru.</p>
+                            <p className="text-xs text-slate-400 mt-1">Transaksi pemesanan yang masuk akan otomatis muncul di sini.</p>
+                        </div>
+                    ) : (
+                  
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[650px] text-left text-sm">
+                                <thead className="bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                                     <tr>
-                                        <td colSpan="6" className="px-6 py-10 text-center text-xs text-slate-400">
-                                            Belum ada data booking terbaru.
-                                        </td>
+                                        <th className="px-6 py-3.5">ID</th>
+                                        <th className="px-6 py-3.5">User</th>
+                                        <th className="px-6 py-3.5">Kendaraan</th>
+                                        <th className="px-6 py-3.5">Periode</th>
+                                        <th className="px-6 py-3.5">Total</th>
+                                        <th className="px-6 py-3.5">Status</th>
                                     </tr>
-                                ) : (
-                                    bookings.map((item) => (
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-700">
+                                    {bookings.map((item) => (
                                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                                             <td className="px-6 py-4 font-mono font-bold text-xs text-slate-900">
                                                 #{item.id}
@@ -360,11 +392,11 @@ export default function AdminDashboardPage() {
                                                 </span>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 <Summary
@@ -375,7 +407,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs xl:col-span-2">
+                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs xl:col-span-2 flex flex-col">
                     <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
                         <div>
                             <h2 className="text-base font-bold text-slate-900">
@@ -390,27 +422,32 @@ export default function AdminDashboardPage() {
                         </span>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[600px] text-left text-sm">
-                            <thead className="bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                                <tr>
-                                    <th className="px-6 py-3.5">ID</th>
-                                    <th className="px-6 py-3.5">Booking ID</th>
-                                    <th className="px-6 py-3.5">Metode</th>
-                                    <th className="px-6 py-3.5">Jumlah</th>
-                                    <th className="px-6 py-3.5">Status</th>
-                                </tr>
-                            </thead>
-
-                            <tbody className="divide-y divide-slate-100 text-slate-700">
-                                {payments.length === 0 ? (
+                    {payments.length === 0 ? (
+                  
+                        <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3">
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                            </div>
+                            <p className="text-sm font-medium text-slate-700">Belum ada data pembayaran terbaru.</p>
+                            <p className="text-xs text-slate-400 mt-1">Riwayat pembayaran yang masuk akan otomatis muncul di sini.</p>
+                        </div>
+                    ) : (
+                  
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[600px] text-left text-sm">
+                                <thead className="bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                                     <tr>
-                                        <td colSpan="5" className="px-6 py-10 text-center text-xs text-slate-400">
-                                            Belum ada data pembayaran terbaru.
-                                        </td>
+                                        <th className="px-6 py-3.5">ID</th>
+                                        <th className="px-6 py-3.5">Booking ID</th>
+                                        <th className="px-6 py-3.5">Metode</th>
+                                        <th className="px-6 py-3.5">Jumlah</th>
+                                        <th className="px-6 py-3.5">Status</th>
                                     </tr>
-                                ) : (
-                                    payments.map((item) => (
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-700">
+                                    {payments.map((item) => (
                                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                                             <td className="px-6 py-4 font-mono font-bold text-xs text-slate-900">
                                                 #{item.id}
@@ -435,11 +472,11 @@ export default function AdminDashboardPage() {
                                                 </span>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 <Summary
@@ -448,6 +485,15 @@ export default function AdminDashboardPage() {
                     totalCount={totalPaymentsCount}
                 />
             </div>
+
+            <Toast
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() =>
+                    setToast((prev) => ({ ...prev, open: false }))
+                }
+            />
         </div>
     );
 }
