@@ -16,7 +16,12 @@ import {
     CreditCard, 
     FileText,
     LogOut,
-    User
+    User,
+    ChevronDown,
+    PanelsTopLeft,
+    BookOpen,
+    MapPin
+
 } from "lucide-react";
 
 const subscribeToUser = (onChange) => {
@@ -50,10 +55,32 @@ const menus = [
     { name: "Laporan", href: "/admin/reports", icon: FileText },
 ];
 
+
+const informationMenus = [
+    {
+        name: "Cara Rental",
+        href: "/admin/rental-guide",
+        icon: BookOpen,
+    },
+    {
+        name: "Kontak & Lokasi",
+        href: "/admin/contact-location",
+        icon: MapPin,
+    },
+];
+
 export default function AdminSidebar({ isOpen, onClose }) {
     const pathname = usePathname();
     const router = useRouter();
+    
     const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+    const [isInformationOpen, setIsInformationOpen] = useState(
+        () =>
+            pathname.startsWith("/admin/rental-guide") ||
+            pathname.startsWith("/admin/contact-location")
+    );
+
     const storedUser = useSyncExternalStore(
         subscribeToUser,
         getUserSnapshot,
@@ -72,6 +99,11 @@ export default function AdminSidebar({ isOpen, onClose }) {
 
     const userName = user?.name || "Administrator";
     const userEmail = user?.email || "Admin";
+    const isInformationActive = informationMenus.some(
+        (menu) =>
+            pathname === menu.href ||
+            pathname.startsWith(`${menu.href}/`)
+    );
 
     const handleLogout = () => {
         sessionStorage.removeItem("token");
@@ -123,36 +155,99 @@ export default function AdminSidebar({ isOpen, onClose }) {
                     <p className="mb-2.5 px-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
                         Menu Utama
                     </p>
+                    
+                    
+<div className="space-y-1">
+    {/* Menu utama */}
+    {menus.map((menu) => {
+        const isActive =
+            pathname === menu.href ||
+            pathname.startsWith(`${menu.href}/`);
 
-                    <div className="space-y-1">
-                        {menus.map((menu) => {
-                            const isActive =
-                                pathname === menu.href ||
-                                pathname.startsWith(`${menu.href}/`);
+        const Icon = menu.icon;
 
-                            const Icon = menu.icon;
+        return (
+            <Link
+                key={menu.href}
+                href={menu.href}
+                onClick={onClose}
+                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                    isActive
+                        ? "bg-blue-50 text-blue-600 font-semibold"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+            >
+                <Icon
+                    className={`h-4.5 w-4.5 shrink-0 ${
+                        isActive
+                            ? "text-blue-600"
+                            : "text-gray-400 group-hover:text-gray-600"
+                    }`}
+                />
+                <span className="truncate">{menu.name}</span>
+            </Link>
+        );
+    })}
 
-                            return (
-                                <Link
-                                    key={menu.href}
-                                    href={menu.href}
-                                    onClick={onClose}
-                                    className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                                        isActive
-                                            ? "bg-blue-50 text-blue-600 font-semibold"
-                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                                    }`}
-                                >
-                                    <Icon 
-                                        className={`h-4.5 w-4.5 shrink-0 transition-colors ${
-                                            isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"
-                                        }`} 
-                                    />
-                                    <span className="truncate">{menu.name}</span>
-                                </Link>
-                            );
-                        })}
-                    </div>
+    {/* Informasi Website */}
+    <div>
+        <button
+            type="button"
+            onClick={() =>
+                setIsInformationOpen((prev) => !prev)
+            }
+            aria-expanded={isInformationOpen}
+            className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                isInformationActive
+                    ? "bg-blue-50 text-blue-600 font-semibold"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            }`}
+        >
+            <PanelsTopLeft className="h-4.5 w-4.5 shrink-0" />
+
+            <span className="flex-1 truncate text-left">
+                Informasi Website
+            </span>
+
+            <ChevronDown
+                className={`h-4 w-4 transition-transform duration-200 ${
+                    isInformationOpen ? "rotate-180" : ""
+                }`}
+            />
+        </button>
+
+        {isInformationOpen && (
+            <div className="ml-5 mt-1 space-y-1 border-l border-gray-200 pl-3">
+                {informationMenus.map((menu) => {
+                    const isActive =
+                        pathname === menu.href ||
+                        pathname.startsWith(`${menu.href}/`);
+
+                    const Icon = menu.icon;
+
+                    return (
+                        <Link
+                            key={menu.href}
+                            href={menu.href}
+                            onClick={onClose}
+                            className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 ${
+                                isActive
+                                    ? "bg-blue-50 font-semibold text-blue-600"
+                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                            }`}
+                        >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">
+                                {menu.name}
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
+        )}
+    </div>
+</div>
+
                 </nav>
 
                 <div className="shrink-0 border-t border-gray-100 p-3">
