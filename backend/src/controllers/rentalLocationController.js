@@ -1,316 +1,393 @@
+const fs = require("fs");
+const path = require("path");
 
 const rentalLocationService = require("../services/rentalLocationService");
 
-const validId = (id) =>
-    /^\d+$/.test(String(id)) && Number(id) > 0;
+const UPLOAD_DIRECTORY = path.resolve(
+    __dirname,
+    "../../uploads/locations"
+);
 
-const validCoordinates = (data) => {
-    if (data.latitude !== undefined && data.latitude !== null && data.latitude !== "") {
-        const latitude = Number(data.latitude);
-        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-            return "Latitude harus berada antara -90 dan 90.";
-        }
+const IMAGE_PREFIX = "/uploads/locations/";
+
+const getImagePath = (image) => {
+    if (
+        typeof image !== "string" ||
+        !image.startsWith(IMAGE_PREFIX)
+    ) {
+        return null;
     }
 
-    if (data.longitude !== undefined && data.longitude !== null && data.longitude !== "") {
-        const longitude = Number(data.longitude);
-        if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-            return "Longitude harus berada antara -180 dan 180.";
+    const filename = path.basename(image);
+
+    if (filename !== image.slice(IMAGE_PREFIX.length)) {
+        return null;
+    }
+
+    return path.join(UPLOAD_DIRECTORY, filename);
+};
+
+const removeImage = async (image) => {
+    const imagePath = getImagePath(image);
+
+    if (!imagePath) return;
+
+    try {
+        await fs.promises.unlink(imagePath);
+    } catch (error) {
+        if (error.code !== "ENOENT") {
+            console.error("Gagal menghapus gambar:", error);
         }
+    }
+};
+
+const cleanupUploadedFile = async (file) => {
+    if (!file) return;
+
+    try {
+        await fs.promises.unlink(file.path);
+    } catch (error) {
+        if (error.code !== "ENOENT") {
+            console.error("Gagal membersihkan gambar baru:", error);
+        }
+    }
+};
+
+const allowedActiveValues = [0, 1, "0", "1", true, false];
+
+const sendSuccess = (res, statusCode, message, data) => {
+    const response = { success: true, message };
+
+    if (data !== undefined) {
+        response.data = data;
+    }
+
+    return res.status(statusCode).json(response);
+};
+
+const sendError = (res, statusCode, message) =>
+    res.status(statusCode).json({ success: false, message });
+
+const handleError = (res, error, label, fallbackMessage) => {
+    console.error(`${label}:`, error);
+
+    const statusCode = error.statusCode || 500;
+    const message = error.statusCode ? error.message : fallbackMessage;
+
+    return sendError(res, statusCode, message);
+};
+
+const validId = (id) => /^\d+$/.test(String(id)) && Number(id) > 0;
+
+const hasValue = (value) =>
+    value !== undefined && value !== null && value !== "";
+
+const isValidActive = (value) => allowedActiveValues.includes(value);
+
+const validateCoordinate = (value, min, max, label) => {
+    if (!hasValue(value)) return null;
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number) || number < min || number > max) {
+        return `${label} harus berada antara ${min} dan ${max}.`;
     }
 
     return null;
 };
 
-const getAll = async (req, res) => {
+const validateLocationPayload = (body, { isUpdate = false } = {}) => {
+    const { name, address, latitude, longitude, is_active } = body;
+
+    if (isUpdate) {
+        const nameInvalid =
+            name !== undefined && (typeof name !== "string" || !name.trim());
+        const addressInvalid =
+            address !== undefined &&
+            (typeof address !== "string" || !address.trim());
+
+        if (nameInvalid || addressInvalid) {
+            return "Nama dan alamat tidak boleh kosong.";
+        }
+    } else if (
+        typeof name !== "string" ||
+        !name.trim() ||
+        typeof address !== "string" ||
+        !address.trim()
+    ) {
+        return "Nama dan alamat lokasi wajib diisi.";
+    }
+
+    const coordinateError =
+        validateCoordinate(latitude, -90, 90, "Latitude") ||
+        validateCoordinate(longitude, -180, 180, "Longitude");
+
+    if (coordinateError) return coordinateError;
+
+    if (is_active !== undefined && !isValidActive(is_active)) {
+        return "is_active harus berupa 0 atau 1.";
+    }
+
+    return null;
+};
+
+const buildPayload = (body) => {
+    const payload = { ...body };
+
+    if (payload.name !== undefined) payload.name = payload.name.trim();
+    if (payload.address !== undefined) payload.address = payload.address.trim();
+    if (payload.is_active !== undefined) {
+        payload.is_active = Number(payload.is_active);
+    }
+
+    return payload;
+};
+
+const getAllRentalLocations = async (req, res) => {
     try {
         const filters = {};
 
         if (req.query.is_active !== undefined) {
             if (!["0", "1"].includes(req.query.is_active)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Parameter is_active harus 0 atau 1.",
-                });
+                return sendError(
+                    res,
+                    400,
+                    "Parameter is_active harus 0 atau 1."
+                );
             }
 
             filters.is_active = req.query.is_active;
         }
 
-        const locations = await rentalLocationService.getAll(filters);
+        const locations = await rentalLocationService.getAllRentalLocations(filters);
 
-        return res.status(200).json({
-            success: true,
-            message: "Daftar lokasi rental berhasil diambil.",
-            data: locations,
-        });
+        return sendSuccess(
+            res,
+            200,
+            "Daftar lokasi rental berhasil diambil.",
+            locations
+        );
     } catch (error) {
-        console.error("getAll rental locations:", error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Gagal mengambil daftar lokasi rental.",
-        });
+        return handleError(
+            res,
+            error,
+            "Get all rental locations error",
+            "Gagal mengambil daftar lokasi rental."
+        );
     }
 };
 
-const getById = async (req, res) => {
+const getRentalLocationById = async (req, res) => {
     try {
         if (!validId(req.params.id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID lokasi tidak valid.",
-            });
+            return sendError(res, 400, "ID lokasi tidak valid.");
         }
 
-        const location = await rentalLocationService.getById(
+        const location = await rentalLocationService.getRentalLocationById(
             Number(req.params.id)
         );
 
         if (!location) {
-            return res.status(404).json({
-                success: false,
-                message: "Lokasi rental tidak ditemukan.",
-            });
+            return sendError(res, 404, "Lokasi rental tidak ditemukan.");
         }
 
-        return res.status(200).json({
-            success: true,
-            message: "Detail lokasi rental berhasil diambil.",
-            data: location,
-        });
+        return sendSuccess(
+            res,
+            200,
+            "Detail lokasi rental berhasil diambil.",
+            location
+        );
     } catch (error) {
-        console.error("getById rental location:", error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Gagal mengambil detail lokasi rental.",
-        });
+        return handleError(
+            res,
+            error,
+            "Get rental location by id error",
+            "Gagal mengambil detail lokasi rental."
+        );
     }
 };
 
-const create = async (req, res) => {
+
+const createRentalLocation = async (req, res) => {
     try {
-        const { name, address } = req.body;
+        const validationError = validateLocationPayload(req.body);
 
-        if (
-            typeof name !== "string" ||
-            !name.trim() ||
-            typeof address !== "string" ||
-            !address.trim()
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "Nama dan alamat lokasi wajib diisi.",
-            });
+        if (validationError) {
+            await cleanupUploadedFile(req.file);
+            return sendError(res, 400, validationError);
         }
 
-        const coordinateError = validCoordinates(req.body);
+        const payload = buildPayload(req.body);
 
-        if (coordinateError) {
-            return res.status(400).json({
-                success: false,
-                message: coordinateError,
-            });
+        if (req.file) {
+            payload.image = `${IMAGE_PREFIX}${req.file.filename}`;
         }
 
-        if (
-            req.body.is_active !== undefined &&
-            ![0, 1, "0", "1", true, false].includes(req.body.is_active)
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "is_active harus berupa 0 atau 1.",
-            });
-        }
+        const location = await rentalLocationService.createRentalLocation(payload);
 
-        const location = await rentalLocationService.create({
-            ...req.body,
-            name: name.trim(),
-            address: address.trim(),
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: "Lokasi rental berhasil ditambahkan.",
-            data: location,
-        });
+        return sendSuccess(
+            res,
+            201,
+            "Lokasi rental berhasil ditambahkan.",
+            location
+        );
     } catch (error) {
-        console.error("create rental location:", error);
+        await cleanupUploadedFile(req.file);
 
-        return res.status(500).json({
-            success: false,
-            message: "Gagal menambahkan lokasi rental.",
-        });
+        return handleError(
+            res,
+            error,
+            "Create rental location error",
+            "Gagal menambahkan lokasi rental."
+        );
     }
 };
 
-const update = async (req, res) => {
+const updateRentalLocation = async (req, res) => {
+    let isUpdated = false;
+
     try {
         if (!validId(req.params.id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID lokasi tidak valid.",
-            });
+            await cleanupUploadedFile(req.file);
+            return sendError(res, 400, "ID lokasi tidak valid.");
         }
 
-        const current = await rentalLocationService.getById(
-            Number(req.params.id)
-        );
+        const validationError = validateLocationPayload(req.body, {
+            isUpdate: true,
+        });
 
-        if (!current) {
-            return res.status(404).json({
-                success: false,
-                message: "Lokasi rental tidak ditemukan.",
-            });
+        if (validationError) {
+            await cleanupUploadedFile(req.file);
+            return sendError(res, 400, validationError);
         }
 
-        const { name, address } = req.body;
+        const id = Number(req.params.id);
 
-        if (
-            (name !== undefined &&
-                (typeof name !== "string" || !name.trim())) ||
-            (address !== undefined &&
-                (typeof address !== "string" || !address.trim()))
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "Nama dan alamat tidak boleh kosong.",
-            });
+        const existingLocation =
+            await rentalLocationService.getRentalLocationById(id);
+
+        if (!existingLocation) {
+            await cleanupUploadedFile(req.file);
+            return sendError(res, 404, "Lokasi rental tidak ditemukan.");
         }
 
-        const coordinateError = validCoordinates(req.body);
+        const payload = buildPayload(req.body);
 
-        if (coordinateError) {
-            return res.status(400).json({
-                success: false,
-                message: coordinateError,
-            });
+        if (req.file) {
+            payload.image = `${IMAGE_PREFIX}${req.file.filename}`;
         }
 
-        if (
-            req.body.is_active !== undefined &&
-            ![0, 1, "0", "1", true, false].includes(req.body.is_active)
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "is_active harus berupa 0 atau 1.",
-            });
-        }
-
-        const payload = { ...req.body };
-
-        if (name !== undefined) payload.name = name.trim();
-        if (address !== undefined) payload.address = address.trim();
-
-        const location = await rentalLocationService.update(
-            Number(req.params.id),
+        const location = await rentalLocationService.updateRentalLocation(
+            id,
             payload
         );
 
-        return res.status(200).json({
-            success: true,
-            message: "Lokasi rental berhasil diperbarui.",
-            data: location,
-        });
-    } catch (error) {
-        console.error("update rental location:", error);
+        isUpdated = true;
 
-        return res.status(500).json({
-            success: false,
-            message: "Gagal memperbarui lokasi rental.",
-        });
+        if (req.file && location) {
+            await removeImage(existingLocation.image);
+        }
+
+        return sendSuccess(
+            res,
+            200,
+            "Lokasi rental berhasil diperbarui.",
+            location
+        );
+    } catch (error) {
+        if (!isUpdated) {
+            await cleanupUploadedFile(req.file);
+        }
+
+        return handleError(
+            res,
+            error,
+            "Update rental location error",
+            "Gagal memperbarui lokasi rental."
+        );
     }
 };
 
-const remove = async (req, res) => {
+const deleteRentalLocation = async (req, res) => {
     try {
         if (!validId(req.params.id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID lokasi tidak valid.",
-            });
+            return sendError(res, 400, "ID lokasi tidak valid.");
         }
 
-        const deleted = await rentalLocationService.remove(
-            Number(req.params.id)
-        );
+        const id = Number(req.params.id);
+
+        const existingLocation =
+            await rentalLocationService.getRentalLocationById(id);
+
+        if (!existingLocation) {
+            return sendError(res, 404, "Lokasi rental tidak ditemukan.");
+        }
+
+        const deleted = await rentalLocationService.deleteRentalLocation(id);
 
         if (!deleted) {
-            return res.status(404).json({
-                success: false,
-                message: "Lokasi rental tidak ditemukan.",
-            });
+            return sendError(res, 404, "Lokasi rental tidak ditemukan.");
         }
 
-        return res.status(200).json({
-            success: true,
-            message: "Lokasi rental berhasil dihapus.",
-        });
-    } catch (error) {
-        console.error("remove rental location:", error);
+        await removeImage(existingLocation.image);
 
-        return res.status(500).json({
-            success: false,
-            message: "Gagal menghapus lokasi rental.",
-        });
+        return sendSuccess(res, 200, "Lokasi rental berhasil dihapus.");
+    } catch (error) {
+        return handleError(
+            res,
+            error,
+            "Delete rental location error",
+            "Gagal menghapus lokasi rental."
+        );
     }
 };
 
-const updateStatus = async (req, res) => {
+const updateRentalLocationStatus = async (req, res) => {
     try {
         if (!validId(req.params.id)) {
-            return res.status(400).json({
-                success: false,
-                message: "ID lokasi tidak valid.",
-            });
+            return sendError(res, 400, "ID lokasi tidak valid.");
         }
 
         const { is_active } = req.body;
 
-        if (![0, 1, "0", "1", true, false].includes(is_active)) {
-            return res.status(400).json({
-                success: false,
-                message: "is_active harus berupa 0 atau 1.",
-            });
+        if (!isValidActive(is_active)) {
+            return sendError(res, 400, "is_active harus berupa 0 atau 1.");
         }
 
-        const current = await rentalLocationService.getById(
-            Number(req.params.id)
-        );
+        const id = Number(req.params.id);
 
-        if (!current) {
-            return res.status(404).json({
-                success: false,
-                message: "Lokasi rental tidak ditemukan.",
-            });
+        const existingLocation = await rentalLocationService.getRentalLocationById(id);
+
+        if (!existingLocation) {
+            return sendError(res, 404, "Lokasi rental tidak ditemukan.");
         }
 
-        const location = await rentalLocationService.updateStatus(
-            Number(req.params.id),
+        const location = await rentalLocationService.updateRentalLocationStatus(
+            id,
             Number(is_active)
         );
 
-        return res.status(200).json({
-            success: true,
-            message: "Status lokasi rental berhasil diperbarui.",
-            data: location,
-        });
+        return sendSuccess(
+            res,
+            200,
+            "Status lokasi rental berhasil diperbarui.",
+            location
+        );
     } catch (error) {
-        console.error("updateStatus rental location:", error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Gagal memperbarui status lokasi rental.",
-        });
+        return handleError(
+            res,
+            error,
+            "Update rental location status error",
+            "Gagal memperbarui status lokasi rental."
+        );
     }
 };
 
 module.exports = {
-    getAll,
-    getById,
-    create,
-    update,
-    remove,
-    updateStatus,
+    getAllRentalLocations,
+    getRentalLocationById,
+    createRentalLocation,
+    updateRentalLocation,
+    updateRentalLocationStatus,
+    deleteRentalLocation,
 };

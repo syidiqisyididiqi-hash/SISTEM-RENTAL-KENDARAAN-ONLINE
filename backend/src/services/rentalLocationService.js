@@ -1,7 +1,27 @@
 const pool = require("../config/database");
 
-const getAll = async (filters = {}) => {
-    let sql = "SELECT * FROM rental_locations";
+const TABLE = "rental_locations";
+
+const REQUIRED_FIELDS = ["name", "address"];
+
+const OPTIONAL_FIELDS = [
+    "latitude",
+    "longitude",
+    "maps_url",
+    "phone",
+    "whatsapp",
+    "email",
+    "opening_hours",
+    "image",
+];
+
+const ALL_FIELDS = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS, "is_active"];
+
+const emptyToNull = (value) =>
+    value === undefined || value === "" ? null : value;
+
+const getAllRentalLocations = async (filters = {}) => {
+    let sql = `SELECT * FROM ${TABLE}`;
     const conditions = [];
     const params = [];
 
@@ -16,131 +36,104 @@ const getAll = async (filters = {}) => {
 
     sql += " ORDER BY created_at DESC";
 
-    const [rows] = await db.query(sql, params);
+    const [rows] = await pool.query(sql, params);
+
     return rows;
 };
 
-const getById = async (id) => {
-    const [rows] = await db.query(
-        "SELECT * FROM rental_locations WHERE id = ?",
+const getRentalLocationById = async (id) => {
+    const [rows] = await pool.query(
+        `SELECT * FROM ${TABLE} WHERE id = ?`,
         [id]
     );
 
     return rows[0] || null;
 };
 
-const create = async (data) => {
-    const {
-        name,
-        address,
-        latitude,
-        longitude,
-        maps_url,
-        phone,
-        whatsapp,
-        email,
-        opening_hours,
-        image,
-        is_active,
-    } = data;
+const createRentalLocation = async (data) => {
+    const values = ALL_FIELDS.map((field) => {
+        if (REQUIRED_FIELDS.includes(field)) return data[field];
 
-    const sql = `
-        INSERT INTO rental_locations (
-            name, address, latitude, longitude, maps_url,
-            phone, whatsapp, email, opening_hours, image, is_active
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+        if (field === "is_active") {
+            return data.is_active === undefined ? 1 : Number(data.is_active);
+        }
 
-    const params = [
-        name,
-        address,
-        latitude ?? null,
-        longitude ?? null,
-        maps_url ?? null,
-        phone ?? null,
-        whatsapp ?? null,
-        email ?? null,
-        opening_hours ?? null,
-        image ?? null,
-        is_active === undefined ? 1 : Number(is_active),
-    ];
+        return emptyToNull(data[field]);
+    });
 
-    const [result] = await db.query(sql, params);
+    const placeholders = ALL_FIELDS.map(() => "?").join(", ");
 
-    return getById(result.insertId);
+    const [result] = await pool.query(
+        `INSERT INTO ${TABLE} (${ALL_FIELDS.join(", ")}) VALUES (${placeholders})`,
+        values
+    );
+
+    return getRentalLocationById(result.insertId);
 };
 
-const update = async (id, data) => {
-    const fields = [
-        "name",
-        "address",
-        "latitude",
-        "longitude",
-        "maps_url",
-        "phone",
-        "whatsapp",
-        "email",
-        "opening_hours",
-        "image",
-        "is_active",
-    ];
-
+const updateRentalLocation = async (id, data) => {
     const updates = [];
     const params = [];
 
-    for (const field of fields) {
-        if (Object.prototype.hasOwnProperty.call(data, field)) {
-            updates.push(`${field} = ?`);
-            params.push(
-                data[field] === "" && !["name", "address"].includes(field)
-                    ? null
-                    : data[field]
-            );
-        }
+    for (const field of ALL_FIELDS) {
+        if (!Object.prototype.hasOwnProperty.call(data, field)) continue;
+
+        const isRequiredOrStatus =
+            REQUIRED_FIELDS.includes(field) || field === "is_active";
+
+        updates.push(`${field} = ?`);
+        params.push(isRequiredOrStatus ? data[field] : emptyToNull(data[field]));
     }
 
     if (updates.length === 0) {
-        return getById(id);
+        return getRentalLocationById(id);
     }
 
     params.push(id);
 
-    await db.query(
-        `UPDATE rental_locations SET ${updates.join(", ")} WHERE id = ?`,
+    await pool.query(
+        `UPDATE ${TABLE} SET ${updates.join(", ")} WHERE id = ?`,
         params
     );
 
-    return getById(id);
+    return getRentalLocationById(id);
 };
 
-const remove = async (id) => {
-    const [result] = await db.query(
-        "DELETE FROM rental_locations WHERE id = ?",
-        [id]
-    );
-
-    return result.affectedRows > 0;
-};
-
-const updateStatus = async (id, is_active) => {
-    const [result] = await db.query(
-        "UPDATE rental_locations SET is_active = ? WHERE id = ?",
+const updateRentalLocationStatus = async (id, is_active) => {
+    await pool.query(
+        `UPDATE ${TABLE} SET is_active = ? WHERE id = ?`,
         [is_active, id]
     );
 
-    if (result.affectedRows === 0) {
-        return getById(id);
-    }
+    return getRentalLocationById(id);
+};
 
-    return getById(id);
+const deleteRentalLocation = async (id) => {
+    try {
+        const [result] = await pool.query(
+            `DELETE FROM ${TABLE} WHERE id = ?`,
+            [id]
+        );
+
+        return result.affectedRows > 0;
+    } catch (error) {
+        if (error.code === "ER_ROW_IS_REFERENCED_2") {
+            const referencedError = new Error(
+                "Lokasi rental tidak dapat dihapus karena masih digunakan oleh data lain. Nonaktifkan lokasi sebagai gantinya."
+            );
+            referencedError.statusCode = 409;
+            throw referencedError;
+        }
+
+        throw error;
+    }
 };
 
 module.exports = {
-    getAll,
-    getById,
-    create,
-    update,
-    remove,
-    updateStatus,
+    getAllRentalLocations,
+    getRentalLocationById,
+    createRentalLocation,
+    updateRentalLocation,
+    updateRentalLocationStatus,
+    deleteRentalLocation,
 };

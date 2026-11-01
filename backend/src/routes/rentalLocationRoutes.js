@@ -4,13 +4,50 @@ const router = express.Router();
 
 const rentalLocationController = require("../controllers/rentalLocationController");
 
-router.get("/", rentalLocationController.getAll);
-router.get("/:id", rentalLocationController.getById);
+const authMiddleware = require("../middleware/authMiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
+const uploadLocation = require("../middleware/uploadLocationMiddleware");
 
-router.post("/", rentalLocationController.create);
-router.put("/:id", rentalLocationController.update);
-router.delete("/:id", rentalLocationController.remove);
+router.get(
+    "/",
+    authMiddleware,
+    rentalLocationController.getAllRentalLocations
+);
 
-router.patch("/:id/status", rentalLocationController.updateStatus);
+router.get(
+    "/:id",
+    authMiddleware,
+    rentalLocationController.getRentalLocationById
+);
+
+router.post(
+    "/",
+    authMiddleware,
+    adminMiddleware,
+    uploadLocation.single("image"),
+    rentalLocationController.createRentalLocation
+);
+
+router.put(
+    "/:id",
+    authMiddleware,
+    adminMiddleware,
+    uploadLocation.single("image"),
+    rentalLocationController.updateRentalLocation
+);
+
+router.patch(
+    "/:id/status",
+    authMiddleware,
+    adminMiddleware,
+    rentalLocationController.updateRentalLocationStatus
+);
+
+router.delete(
+    "/:id",
+    authMiddleware,
+    adminMiddleware,
+    rentalLocationController.deleteRentalLocation
+);
 
 module.exports = router;
