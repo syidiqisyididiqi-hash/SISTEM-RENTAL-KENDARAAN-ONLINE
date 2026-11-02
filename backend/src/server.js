@@ -1,4 +1,10 @@
+
 require('dotenv').config();
+
+console.log(
+    'GEMINI_API_KEY tersedia:',
+    Boolean(process.env.GEMINI_API_KEY)
+);
 
 const app = require('./app');
 const pool = require('./config/database');
@@ -7,14 +13,12 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
     try {
-        // Test koneksi database
         const connection = await pool.getConnection();
 
         console.log('Database MySQL berhasil terhubung');
 
         connection.release();
 
-        // Jalankan server
         app.listen(PORT, () => {
             console.log(`Server berjalan di http://localhost:${PORT}`);
         });

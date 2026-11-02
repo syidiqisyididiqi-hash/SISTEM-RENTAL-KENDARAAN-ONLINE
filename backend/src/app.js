@@ -11,6 +11,9 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const paymentSettingRoutes = require("./routes/paymentSettingRoutes");
 const adminDashboardRoutes = require("./routes/adminDashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const chatbotRoutes = require("./routes/chatbotRoutes");
+const rentalLocationRoutes = require("./routes/rentalLocationRoutes");
+const rentalGuideRoutes = require("./routes/rentalGuideRoutes");
 
 const app = express();
 
@@ -45,6 +48,9 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/payment-settings", paymentSettingRoutes);
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/rental-locations", rentalLocationRoutes);
+app.use("/api/rental-guide", rentalGuideRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
