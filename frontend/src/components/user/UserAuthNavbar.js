@@ -3,12 +3,16 @@
 import Link from "next/link";
 import {
     CarFront,
+    Car,
     CalendarCheck,
     User,
     LayoutDashboard,
     LogOut,
     Menu,
     X,
+    BookOpen,
+    MapPin,
+    ChevronRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -116,139 +120,143 @@ export default function UserAuthNavbar() {
         router.replace("/login");
     };
 
+    const navItems = [
+        { label: "Dashboard", href: "/user/dashboard", icon: LayoutDashboard },
+        { label: "Kendaraan", href: "/user/vehicles", icon: Car },
+        { label: "Panduan Rental", href: "/user/rental-guide", icon: BookOpen },
+        { label: "Informasi Toko", href: "/user/contact-location", icon: MapPin },
+        { label: "Booking", href: "/user/bookings", icon: CalendarCheck },
+        { label: "Profil", href: "/user/profile", icon: User },
+    ];
+
     return (
         <>
-            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/90 shadow-xs backdrop-blur-xl transition-all">
+                <div className="mx-auto flex h-[80px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
                     <Link
                         href="/user/dashboard"
-                        className="flex items-center gap-2"
+                        className="group flex shrink-0 items-center gap-3.5 focus:outline-none"
                     >
-                        <CarFront className="h-7 w-7 text-blue-600" />
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 via-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/25 transition-all duration-300 group-hover:rotate-[-4deg] group-hover:scale-105">
+                            <CarFront className="h-5 w-5" strokeWidth={2.2} />
+                        </div>
 
-                        <span className="text-xl font-bold text-slate-900">
-                            RentalKendaraan
-                        </span>
+                        <div className="flex flex-col">
+                            <span className="text-lg font-bold tracking-tight text-slate-900">
+                                R E<span className="text-blue-600 font-extrabold">V </span>
+                            </span>
+                            <span className="text-[10px] font-semibold tracking-[2.5px] text-slate-400">
+                                RENTAL VIHICLE
+                            </span>
+                        </div>
                     </Link>
 
                     <nav className="hidden items-center gap-1 md:flex">
+                        {navItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-                        <Link
-                            href="/user/dashboard"
-                            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
-                        >
-                            <LayoutDashboard className="h-4 w-4" />
-                            Dashboard
-                        </Link>
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] lg:text-[13px] font-semibold transition-all duration-200 ${isActive
+                                            ? "bg-blue-50 text-blue-600 shadow-xs"
+                                            : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+                                        }`}
+                                >
+                                    <Icon className={`h-4 w-4 transition-transform duration-200 group-hover:scale-110 ${isActive ? "text-blue-600" : "text-slate-400 group-hover:text-blue-600"}`} />
+                                    {item.label}
+                                </Link>
+                            );
+                        })}
 
-                        <Link
-                            href="/user/vehicles"
-                            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
-                        >
-                            <CarFront className="h-4 w-4" />
-                            Kendaraan
-                        </Link>
+                        <div className="mx-1.5 h-6 w-px bg-slate-200/80" />
 
-                        <Link
-                            href="/user/bookings"
-                            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
-                        >
-                            <CalendarCheck className="h-4 w-4" />
-                            Booking
-                        </Link>
-
-                        <Link
-                            href="/user/profile"
-                            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
-                        >
-                            <User className="h-4 w-4" />
-                            Profil
-                        </Link>
-
-                        <div className="ml-2 h-6 w-px bg-slate-200" />
-
-                        <span className="px-3 text-sm font-medium text-slate-700">
-                            {user?.name}
-                        </span>
-
-                        <button
-                            type="button"
-                            onClick={handleLogoutClick}
-                            className="ml-1 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                        >
-                            <LogOut className="h-4 w-4" />
-                            Logout
-                        </button>
-                    </nav>
-
-                    <button
-                        type="button"
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 md:hidden"
-                        aria-label="Toggle menu"
-                    >
-                        {isOpen ? (
-                            <X className="h-6 w-6" />
-                        ) : (
-                            <Menu className="h-6 w-6" />
-                        )}
-                    </button>
-                </div>
-
-                {isOpen && (
-                    <div className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
-                        <nav className="flex flex-col gap-1">
-
-                            <Link
-                                href="/user/dashboard"
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                            >
-                                <LayoutDashboard className="h-5 w-5" />
-                                Dashboard
-                            </Link>
-
-                            <Link
-                                href="/user/vehicles"
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                            >
-                                <CarFront className="h-5 w-5" />
-                                Kendaraan
-                            </Link>
-
-                            <Link
-                                href="/user/bookings"
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                            >
-                                <CalendarCheck className="h-5 w-5" />
-                                Booking
-                            </Link>
-
-                            <Link
-                                href="/user/profile"
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                            >
-                                <User className="h-5 w-5" />
-                                Profil
-                            </Link>
-
-                            <div className="my-2 border-t border-slate-200" />
-
-                            <div className="px-4 py-2 text-sm font-medium text-slate-700">
-                                {user?.name}
+                        <div className="flex items-center gap-2.5 pl-1">
+                            <div className="flex items-center gap-2 rounded-xl bg-slate-100/80 px-3 py-2 text-xs font-semibold text-slate-700">
+                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-[10px] font-bold text-white uppercase shadow-xs">
+                                    {user?.name ? user.name.charAt(0) : "U"}
+                                </div>
+                                <span className="max-w-[90px] lg:max-w-[110px] truncate font-bold text-slate-800">
+                                    {user?.name}
+                                </span>
                             </div>
 
                             <button
                                 type="button"
                                 onClick={handleLogoutClick}
-                                className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                                className="flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
                             >
-                                <LogOut className="h-5 w-5" />
-                                <span>Logout</span>
+                                <LogOut className="h-4 w-4" />
+                                <span className="hidden lg:inline">Logout</span>
+                            </button>
+                        </div>
+                    </nav>
+
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-700 shadow-xs transition-all duration-200 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 md:hidden focus:outline-none"
+                        aria-label="Toggle menu"
+                        aria-expanded={isOpen}
+                    >
+                        {isOpen ? (
+                            <X className="h-5 w-5 transition-transform duration-200 rotate-90 scale-110" />
+                        ) : (
+                            <Menu className="h-5 w-5 transition-transform duration-200" />
+                        )}
+                    </button>
+                </div>
+
+                {isOpen && (
+                    <div className="border-t border-slate-100 bg-white/95 px-4 py-5 shadow-2xl backdrop-blur-2xl md:hidden sm:px-6">
+                        <nav className="mx-auto flex max-w-7xl flex-col gap-1.5">
+
+                            <div className="mb-2 flex items-center gap-3 rounded-2xl bg-slate-50 p-3.5 border border-slate-100">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white uppercase shadow-xs">
+                                    {user?.name ? user.name.charAt(0) : "U"}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-slate-400 font-medium">Logged in as</span>
+                                    <span className="text-sm font-bold text-slate-800">{user?.name}</span>
+                                </div>
+                            </div>
+
+                            {navItems.map((item) => {
+                                const Icon = item.icon;
+                                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={() => setIsOpen(false)}
+                                        className={`group flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${isActive
+                                                ? "bg-blue-50 text-blue-600"
+                                                : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+                                            }`}
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <Icon className={`h-4 w-4 transition-colors ${isActive ? "text-blue-600" : "text-slate-400 group-hover:text-blue-600"}`} />
+                                            {item.label}
+                                        </span>
+
+                                        <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-blue-600" />
+                                    </Link>
+                                );
+                            })}
+
+                            <div className="my-2 border-t border-slate-100" />
+
+                            <button
+                                type="button"
+                                onClick={handleLogoutClick}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-100 active:scale-[0.99]"
+                            >
+                                <LogOut className="h-4 w-4" />
+                                Logout
                             </button>
                         </nav>
                     </div>
