@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import UserFooter from "@/components/user/UserFooter";
 import UserAuthNavbar from "@/components/user/UserAuthNavbar";
+import Chatbot from "@/components/chatbot/Chatbot";
 
 export default function UserLayout({ children }) {
     const router = useRouter();
@@ -16,7 +17,11 @@ export default function UserLayout({ children }) {
 
     const isPublicRoute =
         pathname === "/user/vehicles" ||
-        pathname.startsWith("/user/vehicles/");
+        pathname.startsWith("/user/vehicles/") ||
+        pathname === "/user/rental-guide" ||
+        pathname.startsWith("/user/rental-guide/") ||
+        pathname === "/user/contact-location" ||
+        pathname.startsWith("/user/contact-location/");
 
     useEffect(() => {
         const readAuth = () => {
@@ -102,6 +107,8 @@ export default function UserLayout({ children }) {
             </main>
 
             <UserFooter />
+
+            <Chatbot />
         </div>
     );
 }
