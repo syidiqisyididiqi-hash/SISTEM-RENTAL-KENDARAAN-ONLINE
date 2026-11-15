@@ -1,4 +1,3 @@
-
 const express = require("express");
 const router = express.Router();
 
@@ -7,6 +6,11 @@ const rentalLocationController = require("../controllers/rentalLocationControlle
 const authMiddleware = require("../middleware/authMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
 const uploadLocation = require("../middleware/uploadLocationMiddleware");
+
+router.get(
+    "/active",
+    rentalLocationController.getActiveRentalLocation
+);
 
 router.get(
     "/",

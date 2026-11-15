@@ -383,10 +383,38 @@ const updateRentalLocationStatus = async (req, res) => {
     }
 };
 
+const getActiveRentalLocation = async (req, res) => {
+    try {
+        const locations =
+            await rentalLocationService.getAllRentalLocations({
+                is_active: 1,
+            });
+
+        const location = Array.isArray(locations)
+            ? locations[0] || null
+            : null;
+
+        return sendSuccess(
+            res,
+            200,
+            "Informasi toko rental berhasil diambil.",
+            location
+        );
+    } catch (error) {
+        return handleError(
+            res,
+            error,
+            "Get active rental location error",
+            "Gagal mengambil informasi toko rental."
+        );
+    }
+};
+
 module.exports = {
     getAllRentalLocations,
     getRentalLocationById,
     createRentalLocation,
+    getActiveRentalLocation,
     updateRentalLocation,
     updateRentalLocationStatus,
     deleteRentalLocation,
